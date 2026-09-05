@@ -1,0 +1,44 @@
+[
+  {
+    "id": "PLI-001",
+    "priceListId": "PL-ENT",
+    "productId": "PROD-001",
+    "customPrice": 2720,
+    "minQuantity": 10
+  },
+  {
+    "id": "PLI-002",
+    "priceListId": "PL-ENT",
+    "productId": "PROD-002",
+    "customPrice": 157250,
+    "minQuantity": 2
+  },
+  {
+    "id": "PLI-003",
+    "priceListId": "PL-ENT",
+    "productId": "PROD-003",
+    "customPrice": 637500,
+    "minQuantity": 1
+  },
+  {
+    "id": "PLI-004",
+    "priceListId": "PL-MID",
+    "productId": "PROD-001",
+    "customPrice": 2944,
+    "minQuantity": 5
+  },
+  {
+    "id": "PLI-005",
+    "priceListId": "PL-MID",
+    "productId": "PROD-002",
+    "customPrice": 170200,
+    "minQuantity": 1
+  },
+  {
+    "id": "PLI-006",
+    "priceListId": "PL-STD",
+    "productId": "PROD-001",
+    "customPrice": 3200,
+    "minQuantity": 1
+  }
+]

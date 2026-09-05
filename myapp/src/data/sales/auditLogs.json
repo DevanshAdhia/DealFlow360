@@ -1,0 +1,12 @@
+[
+  {
+    "id": "AL-001",
+    "event": "QUOTATION_SUBMITTED",
+    "quotationId": "QID-002",
+    "quotationNumber": "Q-1002",
+    "actor": "Alex Morgan",
+    "actorRole": "SALES_REP",
+    "description": "Submitted quotation Q-1002 for approval. Risk score: 78 (HIGH). Discount 22% exceeds tier limit.",
+    "timestamp": "2026-09-05T07:45:00Z"
+  }
+]

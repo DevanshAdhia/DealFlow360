@@ -1,0 +1,29 @@
+[
+  {
+    "id": "PL-ENT",
+    "code": "PL_ENTERPRISE_GLOBAL",
+    "name": "Enterprise Global Strategic Book",
+    "customerTierId": "TIER-001",
+    "multiplier": 0.85,
+    "currency": "INR",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "PL-MID",
+    "code": "PL_MIDMARKET_REGIONAL",
+    "name": "Mid-Market Growth Book",
+    "customerTierId": "TIER-002",
+    "multiplier": 0.92,
+    "currency": "INR",
+    "status": "ACTIVE"
+  },
+  {
+    "id": "PL-STD",
+    "code": "PL_STANDARD_COMMERCIAL",
+    "name": "Standard Commercial MSRP Book",
+    "customerTierId": "TIER-003",
+    "multiplier": 1.00,
+    "currency": "INR",
+    "status": "ACTIVE"
+  }
+]

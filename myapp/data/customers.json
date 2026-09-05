@@ -1,0 +1,98 @@
+[
+  {
+    "id": "CUST-001",
+    "companyName": "Acme Corporation",
+    "contactName": "Sarah Connor",
+    "email": "s.connor@acmecorp.com",
+    "phone": "+1 (555) 234-5678",
+    "industry": "Enterprise Software & Cloud",
+    "tier": "Tier 1 Enterprise",
+    "paymentTerms": "Net 30",
+    "address": "100 Silicon Ave, Suite 400, San Francisco, CA 94107",
+    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-002",
+    "companyName": "NovaTech Solutions",
+    "contactName": "Michael Chang",
+    "email": "m.chang@novatech.io",
+    "phone": "+1 (555) 345-6789",
+    "industry": "Cybersecurity & Defense",
+    "tier": "Tier 2 Mid-Market",
+    "paymentTerms": "Net 30",
+    "address": "450 Innovation Parkway, Austin, TX 78701",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-003",
+    "companyName": "GlobalSoft Industries",
+    "contactName": "Jessica Sterling",
+    "email": "j.sterling@globalsoft.com",
+    "phone": "+1 (555) 456-7890",
+    "industry": "Financial Technology",
+    "tier": "Tier 1 Enterprise",
+    "paymentTerms": "Net 45",
+    "address": "742 Financial Plaza, New York, NY 10005",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-004",
+    "companyName": "Vertex Systems",
+    "contactName": "Robert Vance",
+    "email": "r.vance@vertexsystems.com",
+    "phone": "+1 (555) 567-8901",
+    "industry": "Aerospace & Telemetry",
+    "tier": "Tier 2 Mid-Market",
+    "paymentTerms": "Net 30",
+    "address": "880 Aerospace Way, Seattle, WA 98101",
+    "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-005",
+    "companyName": "BluePeak Technologies",
+    "contactName": "Elena Rostova",
+    "email": "e.rostova@bluepeak.tech",
+    "phone": "+1 (555) 678-9012",
+    "industry": "Data Infrastructure & AI",
+    "tier": "Tier 1 Strategic",
+    "paymentTerms": "Net 30",
+    "address": "320 Tech Row, Boston, MA 02110",
+    "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-006",
+    "companyName": "Horizon Dynamics",
+    "contactName": "Arthur Pendelton",
+    "email": "arthur@horizondynamics.org",
+    "phone": "+1 (555) 789-0123",
+    "industry": "Logistics & Supply Chain",
+    "tier": "Tier 2 Mid-Market",
+    "paymentTerms": "Net 30",
+    "address": "120 Logistics Center, Chicago, IL 60607",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-007",
+    "companyName": "Vanguard Logistics",
+    "contactName": "David Miller",
+    "email": "d.miller@vanguardlogistics.com",
+    "phone": "+1 (555) 890-1234",
+    "industry": "Freight & Fleet Management",
+    "tier": "Tier 1 Enterprise",
+    "paymentTerms": "Net 30",
+    "address": "900 Harbor Blvd, Dallas, TX 75201",
+    "avatar": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "CUST-008",
+    "companyName": "Helios Medical",
+    "contactName": "Dr. Rebecca Vance",
+    "email": "r.vance@heliosmed.org",
+    "phone": "+1 (555) 901-2345",
+    "industry": "Healthcare & Life Sciences",
+    "tier": "Tier 1 Healthcare",
+    "paymentTerms": "Net 15",
+    "address": "500 Health Park, San Diego, CA 92121",
+    "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=120&auto=format&fit=crop&q=80"
+  }
+]

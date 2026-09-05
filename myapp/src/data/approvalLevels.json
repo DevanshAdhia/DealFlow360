@@ -1,0 +1,20 @@
+[
+  {
+    "id": "AL-001",
+    "level": 1,
+    "roleId": "ROLE-002",
+    "role": "sales_manager",
+    "title": "Sales Manager",
+    "slaHours": 24,
+    "description": "Reviews discounts exceeding representative tier allowances or low margin deals below 35%."
+  },
+  {
+    "id": "AL-002",
+    "level": 2,
+    "roleId": "ROLE-003",
+    "role": "finance",
+    "title": "Finance & RevOps Director",
+    "slaHours": 48,
+    "description": "Reviews high risk deals: discounts > 20%, margins < 25%, or total values > ₹25,00,000."
+  }
+]

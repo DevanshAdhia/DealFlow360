@@ -1,0 +1,100 @@
+[
+  {
+    "id": "APP-2001",
+    "quotationId": "Q-1044",
+    "customerName": "GlobalTech Industries",
+    "salesRepName": "Alex Morgan",
+    "quotationValue": 450000,
+    "requestedDiscount": 18,
+    "allowedDiscount": 15,
+    "excessDiscount": 3,
+    "riskScore": 45,
+    "priority": "Medium",
+    "reason": "Competitive match required for Q3 expansion.",
+    "status": "Pending",
+    "approverRole": "sales_manager",
+    "submittedAt": "2026-09-04T10:30:00Z",
+    "reviewedAt": null,
+    "history": [
+      {
+        "id": "H-001",
+        "actor": "Alex Morgan",
+        "role": "sales_rep",
+        "action": "Submitted",
+        "comment": "Requesting 18% to match competitor pricing.",
+        "timestamp": "2026-09-04T10:30:00Z",
+        "previousStatus": null,
+        "newStatus": "Pending"
+      }
+    ]
+  },
+  {
+    "id": "APP-2002",
+    "quotationId": "Q-1045",
+    "customerName": "NovaTech Solutions",
+    "salesRepName": "Alex Morgan",
+    "quotationValue": 1200000,
+    "requestedDiscount": 20,
+    "allowedDiscount": 15,
+    "excessDiscount": 5,
+    "riskScore": 72,
+    "priority": "High",
+    "reason": "Competitive expansion against rival bid. Requires 20% discount.",
+    "status": "Pending",
+    "approverRole": "finance",
+    "submittedAt": "2026-09-01T10:00:00Z",
+    "reviewedAt": null,
+    "history": [
+      {
+        "id": "H-002",
+        "actor": "Alex Morgan",
+        "role": "sales_rep",
+        "action": "Submitted",
+        "comment": "Huge strategic win if we can secure this 30% discount.",
+        "timestamp": "2026-09-05T09:15:00Z",
+        "previousStatus": null,
+        "newStatus": "Pending"
+      }
+    ]
+  },
+  {
+    "id": "APP-1999",
+    "quotationId": "Q-1030",
+    "customerName": "Alpha Logistics",
+    "salesRepName": "Alex Morgan",
+    "quotationValue": 350000,
+    "requestedDiscount": 20,
+    "allowedDiscount": 15,
+    "excessDiscount": 5,
+    "riskScore": 55,
+    "priority": "Medium",
+    "reason": "Volume commitment for next year.",
+    "status": "Approved",
+    "approverRole": "sales_manager",
+    "approverName": "Sarah Chen",
+    "submittedAt": "2026-09-01T14:00:00Z",
+    "reviewedAt": "2026-09-02T10:00:00Z",
+    "history": [
+      {
+        "id": "H-003",
+        "actor": "Alex Morgan",
+        "role": "sales_rep",
+        "action": "Submitted",
+        "comment": "Volume commitment requires 20%.",
+        "timestamp": "2026-09-01T14:00:00Z",
+        "previousStatus": null,
+        "newStatus": "Pending"
+      },
+      {
+        "id": "H-004",
+        "actor": "Sarah Chen",
+        "role": "sales_manager",
+        "action": "Approved",
+        "comment": "Approved due to volume commitment. Ensure contract reflects minimums.",
+        "timestamp": "2026-09-02T10:00:00Z",
+        "previousStatus": "Pending",
+        "newStatus": "Approved"
+      }
+    ]
+  }
+]

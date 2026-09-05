@@ -1,0 +1,14 @@
+[
+  {
+    "id": "BO-1043-1",
+    "orderId": "SO-1043",
+    "orderItemId": "OI-1043-1",
+    "productId": "PROD-002",
+    "quantityRequired": 5,
+    "quantityPending": 3,
+    "status": "OPEN",
+    "expectedDate": "2026-09-15",
+    "createdAt": "2026-09-04T15:00:00Z",
+    "notes": "Pending additional stock arrival from tier-1 supplier."
+  }
+]

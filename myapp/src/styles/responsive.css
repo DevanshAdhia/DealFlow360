@@ -1,0 +1,87 @@
+/* Responsive Layout Adaptations */
+
+/* Desktop & Ultra Wide (1440px+) */
+@media (min-width: 1440px) {
+  .container-xl {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Laptop (1024px to 1439px) */
+@media (max-width: 1439px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Tablet (768px to 1023px) */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .auth-hero-section {
+    display: none !important;
+  }
+
+  .auth-form-section {
+    width: 100% !important;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+  }
+
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block !important;
+  }
+
+  .main-content-area {
+    margin-left: 0 !important;
+  }
+}
+
+/* Mobile (320px to 767px) */
+@media (max-width: 767px) {
+  .auth-container {
+    padding: 1rem !important;
+  }
+
+  .auth-card {
+    padding: 1.5rem !important;
+  }
+
+  .header-actions {
+    gap: 0.5rem !important;
+  }
+
+  .user-role-badge {
+    display: none;
+  }
+
+  .header-search {
+    display: none !important;
+  }
+
+  .kpi-card {
+    padding: 1rem !important;
+  }
+
+  .quick-demo-pills {
+    flex-wrap: wrap;
+  }
+}
