@@ -1,150 +1,188 @@
 import React, { useState } from 'react';
+import { getUsers, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, DataTable, ConfirmDialog } from '../components/common/UI';
-import { getUsers, saveEntity, deleteEntity } from '../services/storageService';
+
+const ROLES = ['Admin', 'Sales Manager', 'Sales Representative', 'Finance', 'Operations'];
+const DEPARTMENTS = ['IT', 'Sales', 'Finance', 'Operations', 'HR'];
+const STATUSES = ['Active', 'Inactive', 'Suspended'];
+const emptyForm = { name: '', email: '', phone: '', department: 'Sales', role: 'Sales Representative', status: 'Active' };
 
 function Users() {
-  const [users, setUsers] = useState(() => getUsers());
+  const [data, setData] = useState(() => getUsers());
   const [search, setSearch] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
+  const [filterRole, setFilterRole] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = users.filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase()) ||
-    u.role.toLowerCase().includes(search.toLowerCase())
-  );
+  const refresh = () => setData(getUsers());
 
-  const handleDelete = (id) => {
-    setUserToDelete(id);
-    setShowConfirm(true);
+  const filtered = data.filter(u => {
+    const s = !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
+    const r = !filterRole || u.role === filterRole;
+    const st = !filterStatus || u.status === filterStatus;
+    return s && r && st;
+  });
+
+  const validate = () => {
+    const e = {};
+    if (!formData.name?.trim()) e.name = 'Required';
+    if (!formData.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Valid email required';
+    if (!formData.role) e.role = 'Required';
+    return e;
   };
 
-  const confirmDelete = () => {
-    const updated = deleteEntity('df_users', userToDelete);
-    setUsers(updated);
-    toast.success("User deleted successfully.");
-    setShowConfirm(false);
+  const openModal = (item = null) => {
+    setErrors({});
+    setEditingItem(item);
+    setFormData(item ? { ...item } : { ...emptyForm });
+    setIsModalOpen(true);
   };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setLoading(true);
+    setTimeout(() => {
+      const isNew = !editingItem;
+      saveEntity('df_users', formData, isNew);
+      addAuditLog(null, isNew ? 'Created User' : 'Updated User', 'User', `${isNew ? 'Created' : 'Updated'} user: ${formData.name}`);
+      toast.success(isNew ? 'User created!' : 'User updated!');
+      setIsModalOpen(false); setLoading(false); refresh();
+    }, 400);
+  };
+
+  const handleDelete = () => {
+    const u = data.find(x => x.id === deleteConfirmId);
+    deleteEntity('df_users', deleteConfirmId);
+    addAuditLog(null, 'Deleted User', 'User', `Deleted: ${u?.name}`);
+    toast.info('User deleted.'); setDeleteConfirmId(null); refresh();
+  };
+
+  const handleStatus = (user, s) => {
+    saveEntity('df_users', { ...user, status: s }, false);
+    addAuditLog(null, `${s} User`, 'User', `${user.name} set to ${s}`);
+    toast.success(`User ${s.toLowerCase()}.`); refresh();
+  };
+
+  const totalCount = data.length;
+  const activeCount = data.filter(u => u.status === 'Active').length;
+  const inactiveCount = data.filter(u => u.status !== 'Active').length;
 
   const columns = [
-    { Header: 'Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
-    { Header: 'Email', accessor: 'email', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.email}</span> },
+    { Header: 'Name', accessor: 'name', sortable: true },
+    { Header: 'Email', accessor: 'email', sortable: true },
     { Header: 'Role', accessor: 'role', sortable: true },
     { Header: 'Department', accessor: 'department', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge type={row.status === 'Active' ? 'success' : row.status === 'Inactive' ? 'default' : 'danger'}>{row.status}</Badge> },
-    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Button variant="secondary" style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
-          <Button variant="danger" style={{ padding: '0.375rem 0.75rem' }} onClick={() => handleDelete(row.id)}>Delete</Button>
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => handleStatus(row, s)}>{row.status}</Badge> },
+    {
+      Header: 'Actions', accessor: 'actions', sortable: false,
+      Cell: row => (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
+          {row.status !== 'Active' && <button onClick={() => handleStatus(row, 'Active')} className="btn-table-action success">Activate</button>}
+          {row.status === 'Active' && <button onClick={() => handleStatus(row, 'Inactive')} className="btn-table-action warn">Deactivate</button>}
+          <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
         </div>
       )
     }
   ];
 
+  const inp = { width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', boxSizing: 'border-box' };
+  const lbl = { display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' };
+
   return (
     <div>
+      {/* PAGE HEADER — same as Dashboard */}
       <div className="page-header">
         <div className="page-title-group">
-          <h1 className="page-title">User Administration</h1>
-          <p className="page-subtitle">Manage system access, roles, and departmental assignments across the organization.</p>
+          <h1 className="page-title">User Management</h1>
+          <p className="page-subtitle">Manage system users, roles, and access permissions across the platform.</p>
         </div>
-        <Button className="btn-primary">+ Add New User</Button>
+        <button className="btn btn-primary" onClick={() => openModal()}>+ Add User</button>
       </div>
 
+      {/* KPI CARDS — same .metric-card classes as Dashboard */}
       <div className="metric-grid">
-        <div className="metric-card active">
+        <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">TOTAL USERS</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </div>
-          <div className="metric-value text-brand">{users.length}</div>
-          <div className="metric-subtitle">Active accounts across system</div>
+          <div className="metric-value text-brand">{totalCount}</div>
+          <div className="metric-subtitle">Registered accounts</div>
         </div>
-        
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">ACTIVE</span>
+            <span className="metric-title">ACTIVE USERS</span>
             <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <div className="metric-value text-success">{users.filter(u=>u.status==='Active').length}</div>
-          <div className="metric-subtitle">Currently logged in: 12</div>
+          <div className="metric-value text-success">{activeCount}</div>
+          <div className="metric-subtitle">Currently enabled</div>
         </div>
-
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">SUSPENDED</span>
-            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <span className="metric-title">INACTIVE / SUSPENDED</span>
+            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           </div>
-          <div className="metric-value text-danger">{users.filter(u=>u.status==='Suspended').length}</div>
-          <div className="metric-subtitle">Requires administrator review</div>
+          <div className="metric-value text-warning">{inactiveCount}</div>
+          <div className="metric-subtitle">Require admin review</div>
         </div>
-
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">SYSTEM ADMINS</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4V6a2 2 0 012-2h2a2 2 0 012 2v2l4 4" /></svg>
+            <span className="metric-title">ROLES DEFINED</span>
+            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
           </div>
-          <div className="metric-value text-warning">{users.filter(u=>u.role==='Admin').length}</div>
-          <div className="metric-subtitle">Full access granted</div>
+          <div className="metric-value text-danger">{ROLES.length}</div>
+          <div className="metric-subtitle">System roles available</div>
         </div>
       </div>
 
-      <div className="filter-bar">
-        <div className="filter-search">
-          <svg className="filter-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input 
-            type="text" 
-            className="filter-search-input"
-            placeholder="Search by Name, Email, or Role..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        
-        <select className="filter-select">
-          <option>Role: All Roles</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Status: All</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Department: All</option>
-        </select>
-
-        <div className="view-toggles">
-          <button className="view-toggle-btn active">
-            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-          </button>
-          <button className="view-toggle-btn">
-            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-          </button>
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 0 }}>
-        {filtered.length > 0 ? (
-          <DataTable columns={columns} data={filtered} />
-        ) : (
-          <div className="empty-state" style={{ minHeight: '250px', border: 'none', backgroundColor: 'transparent' }}>
-            <div className="empty-state-icon-container">
-              <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-            </div>
-            <h3 className="empty-state-title">No Users Found</h3>
-            <p className="empty-state-desc">Try adjusting your filters or search query.</p>
+      {/* DATA TABLE CARD */}
+      <div className="card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>All Users ({filtered.length})</span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ width: '180px', height: '32px' }} />
+            <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="form-select" style={{ width: '160px', height: '32px' }}>
+              <option value="">All Roles</option>
+              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
+              <option value="">All Statuses</option>
+              {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
-        )}
+        </div>
+        <DataTable columns={columns} data={filtered} emptyMessage="No users found."
+          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add User</button>} />
       </div>
 
-      <ConfirmDialog 
-        isOpen={showConfirm} 
-        onClose={() => setShowConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Delete User"
-        message="Are you absolutely sure you want to delete this user? This action cannot be undone and will remove all their access privileges."
-      />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit User' : 'Create User'}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div><label style={lbl}>Full Name *</label><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} />{errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.name}</p>}</div>
+          <div><label style={lbl}>Email *</label><input value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ ...inp, borderColor: errors.email ? '#ef4444' : '#d1d5db' }} />{errors.email && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.email}</p>}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={lbl}>Phone</label><input value={formData.phone || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={inp} /></div>
+            <div><label style={lbl}>Department</label><select value={formData.department || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} style={inp}>{DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={lbl}>Role *</label><select value={formData.role || ''} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ ...inp, borderColor: errors.role ? '#ef4444' : '#d1d5db' }}>{ROLES.map(r => <option key={r} value={r}>{r}</option>)}</select>{errors.role && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.role}</p>}</div>
+            <div><label style={lbl}>Status</label><select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} style={inp}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Cancel</button>
+            <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Saving…' : editingItem ? 'Update User' : 'Create User'}</button>
+          </div>
+        </form>
+      </Modal>
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete User" message="Are you sure you want to delete this user?" />
     </div>
   );
 }

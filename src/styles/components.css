@@ -449,3 +449,44 @@
 .modal-body {
   padding: var(--space-6);
 }
+
+/* ── Table Action Buttons ─────────────────────────────────────────── */
+.btn-table-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.btn-table-action:hover { opacity: 0.85; }
+.btn-table-action:active { transform: translateY(1px); }
+
+.btn-table-action.edit {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.btn-table-action.danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-table-action.success {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.btn-table-action.warn {
+  background-color: #fffbeb;
+  color: #d97706;
+  border-color: #fde68a;
+}

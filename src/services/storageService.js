@@ -23,7 +23,14 @@ export const setToStorage = (key, val) => {
 };
 
 // Initialization hook replacement (called synchronously on app start)
+const DATA_VERSION = 'v2';
 export const initializeData = () => {
+  if (localStorage.getItem('df_data_version') !== DATA_VERSION) {
+    // Clear old data and reload fresh mock data
+    const keysToRemove = ['df_users','df_roles','df_customers','df_categories','df_products','df_discount_rules','df_approval_rules','df_inventory','df_audit','df_settings','df_pricelists','df_quotations','df_orders','df_warehouses','df_invoices','df_notifications'];
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('df_data_version', DATA_VERSION);
+  }
   if (!localStorage.getItem('df_users')) setToStorage('df_users', initialUsers);
   if (!localStorage.getItem('df_roles')) setToStorage('df_roles', initialRoles);
   if (!localStorage.getItem('df_customers')) setToStorage('df_customers', initialCustomers);
@@ -41,6 +48,7 @@ export const initializeData = () => {
   if (!localStorage.getItem('df_invoices')) setToStorage('df_invoices', initialInvoices);
   if (!localStorage.getItem('df_notifications')) setToStorage('df_notifications', initialNotifications);
 };
+
 
 // Session
 export const getSession = () => getFromStorage('df_session', null);

@@ -29,7 +29,7 @@ export const Select = ({ label, options, ...props }) => (
   </div>
 );
 
-// Common Badge Component (Strictly Mapped to Enterprise Theme)
+// Common Badge Component (Clean Visual Indicator)
 export const Badge = ({ children, type = 'default' }) => {
   const map = {
     Active: 'success', 
@@ -52,7 +52,9 @@ export const Badge = ({ children, type = 'default' }) => {
     Processing: 'warning',
     'Partially Fulfilled': 'warning',
     Fulfilled: 'success',
-    Shipped: 'success'
+    Shipped: 'success',
+    Unread: 'warning',
+    Read: 'default'
   };
   
   const badgeType = (type === 'default' && map[children]) ? map[children] : type;
@@ -91,27 +93,23 @@ export const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message }) =>
   );
 };
 
-// Premium Data Table Component with Sorting & Pagination
+// Premium Data Table Component with Sorting & Pagination (useState-only, no useMemo)
 export const DataTable = ({ columns, data, loading, emptyMessage = 'No records found.', emptyAction }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Sorting Logic
-  const sortedData = React.useMemo(() => {
-    let sortableItems = [...data];
-    if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key];
-        const bValue = b[sortConfig.key];
-        
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [data, sortConfig]);
+  // Sorting Logic using inline sort (no useMemo)
+  let sortedData = [...data];
+  if (sortConfig.key !== null) {
+    sortedData.sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
 
   // Pagination Logic
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
@@ -186,8 +184,7 @@ export const DataTable = ({ columns, data, loading, emptyMessage = 'No records f
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
             <Button variant="secondary" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={{ padding: '0.25rem 0.75rem' }}>Prev</Button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map(page => (
               <Button 
                 key={page} 
                 variant={currentPage === page ? 'primary' : 'secondary'} 
@@ -197,7 +194,6 @@ export const DataTable = ({ columns, data, loading, emptyMessage = 'No records f
                 {page}
               </Button>
             ))}
-
             <Button variant="secondary" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={{ padding: '0.25rem 0.75rem' }}>Next</Button>
           </div>
         </div>

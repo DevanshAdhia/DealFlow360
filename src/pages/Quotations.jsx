@@ -1,134 +1,136 @@
 import React, { useState } from 'react';
-import { Button, Input, Badge, DataTable } from '../components/common/UI';
-import { getQuotations } from '../services/storageService';
+import { getQuotations, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
+import { toast } from 'react-toastify';
+
+const STATUSES = ['Draft', 'Pending', 'Negotiating', 'Approved', 'Rejected', 'Confirmed'];
 
 function Quotations() {
-  const [quotes] = useState(() => getQuotations());
+  const [data, setData] = useState(() => getQuotations());
   const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterRisk, setFilterRisk] = useState('');
+  const [viewItem, setViewItem] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
-  const filtered = quotes.filter(q => 
-    q.quoteId.toLowerCase().includes(search.toLowerCase()) || 
-    q.customer.toLowerCase().includes(search.toLowerCase())
-  );
+  const refresh = () => setData(getQuotations());
+  const filtered = data.filter(q => {
+    const s = !search || q.quoteId?.toLowerCase().includes(search.toLowerCase()) || q.customer?.toLowerCase().includes(search.toLowerCase());
+    return s && (!filterStatus || q.status === filterStatus) && (!filterRisk || q.risk === filterRisk);
+  });
+
+  const handleStatusChange = (q, ns) => {
+    saveEntity('df_quotations', { ...q, status: ns }, false);
+    addAuditLog(null, `${ns} Quotation`, 'Quotation', `Quote ${q.quoteId} → ${ns}`);
+    toast.success(`Quote ${q.quoteId} ${ns.toLowerCase()}.`);
+    refresh();
+  };
+
+  const handleDelete = () => {
+    const q = data.find(x => x.id === deleteConfirmId);
+    deleteEntity('df_quotations', deleteConfirmId);
+    addAuditLog(null, 'Deleted Quotation', 'Quotation', `Deleted ${q?.quoteId}`);
+    toast.info('Quotation deleted.'); setDeleteConfirmId(null); refresh();
+  };
+
+  const totalCount = data.length;
+  const pendingCount = data.filter(q => q.status === 'Pending').length;
+  const approvedCount = data.filter(q => q.status === 'Approved' || q.status === 'Confirmed').length;
+  const highRiskCount = data.filter(q => q.risk === 'High' || q.risk === 'Critical').length;
+  const totalValue = data.reduce((s, q) => s + Number(q.amount || 0), 0);
+
+  const columns = [
+    { Header: 'Quote ID', accessor: 'quoteId', sortable: true },
+    { Header: 'Customer', accessor: 'customer', sortable: true },
+    { Header: 'Amount', accessor: 'amount', sortable: true, Cell: row => `₹${Number(row.amount || 0).toLocaleString('en-IN')}` },
+    { Header: 'Discount', accessor: 'discount', sortable: true, Cell: row => `${row.discount || 0}%` },
+    { Header: 'Risk', accessor: 'risk', sortable: true, Cell: row => <Badge>{row.risk || 'Low'}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => handleStatusChange(row, s)}>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false,
+      Cell: row => <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <button onClick={() => setViewItem(row)} className="btn-table-action edit">View</button>
+        {row.status === 'Pending' && <button onClick={() => handleStatusChange(row, 'Approved')} className="btn-table-action success">Approve</button>}
+        {row.status === 'Pending' && <button onClick={() => handleStatusChange(row, 'Rejected')} className="btn-table-action danger">Reject</button>}
+        {row.status === 'Approved' && <button onClick={() => handleStatusChange(row, 'Confirmed')} className="btn-table-action success">Confirm</button>}
+        <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
+      </div>
+    }
+  ];
 
   return (
     <div>
       <div className="page-header">
         <div className="page-title-group">
-          <h1 className="page-title">Quotations & CPQ Ledger</h1>
-          <p className="page-subtitle">Create, configure, manage commercial agreements, and enforce discount matrix rules.</p>
+          <h1 className="page-title">Quotations</h1>
+          <p className="page-subtitle">Monitor and manage all sales quotations, approvals, risk assessments and pipeline.</p>
         </div>
-        <Button className="btn-primary">+ New Quotation</Button>
       </div>
 
-      {/* Metrics Row */}
       <div className="metric-grid">
-        <div className="metric-card active">
-          <div className="metric-header">
-            <span className="metric-title">TOTAL QUOTES</span>
+        <div className="metric-card">
+          <div className="metric-header"><span className="metric-title">TOTAL QUOTES</span>
             <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           </div>
-          <div className="metric-value text-brand">{quotes.length}</div>
-          <div className="metric-subtitle">₹0 Total Volume</div>
+          <div className="metric-value text-brand">{totalCount}</div>
+          <div className="metric-subtitle">All-time quotes</div>
         </div>
-        
         <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">DRAFT</span>
-            <svg className="metric-icon text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          </div>
-          <div className="metric-value text-secondary">{quotes.filter(q=>q.status==='Draft').length}</div>
-          <div className="metric-subtitle">₹0 scoping</div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">PENDING APPROVAL</span>
+          <div className="metric-header"><span className="metric-title">PENDING APPROVAL</span>
             <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <div className="metric-value text-warning">{quotes.filter(q=>q.status==='Pending').length}</div>
-          <div className="metric-subtitle">₹0 in review</div>
+          <div className="metric-value text-warning">{pendingCount}</div>
+          <div className="metric-subtitle">Awaiting review</div>
         </div>
-
         <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">NEGOTIATION</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-          </div>
-          <div className="metric-value text-brand">0</div>
-          <div className="metric-subtitle">₹0 active talks</div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">CONFIRMED</span>
+          <div className="metric-header"><span className="metric-title">APPROVED / CONFIRMED</span>
             <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <div className="metric-value text-success">{quotes.filter(q=>q.status==='Approved').length}</div>
-          <div className="metric-subtitle">₹0 closed won</div>
+          <div className="metric-value text-success">{approvedCount}</div>
+          <div className="metric-subtitle">Ready to order</div>
         </div>
-
         <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">PIPELINE VALUE</span>
-            <span className="text-success font-bold">$</span>
+          <div className="metric-header"><span className="metric-title">PIPELINE VALUE</span>
+            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
           </div>
-          <div className="metric-value text-success">₹0</div>
-          <div className="metric-subtitle">Active open pipeline</div>
+          <div className="metric-value text-danger">₹{(totalValue / 100000).toFixed(1)}L</div>
+          <div className="metric-subtitle">Total pipeline</div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="filter-bar">
-        <div className="filter-search">
-          <svg className="filter-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input 
-            type="text" 
-            className="filter-search-input"
-            placeholder="Search by ID (e.g. Q-1041), Customer, Rep..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>All Quotations ({filtered.length})</span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search quote ID or customer…" className="form-input" style={{ width: '220px', height: '32px' }} />
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
+              <option value="">All Statuses</option>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterRisk} onChange={e => setFilterRisk(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
+              <option value="">All Risk Levels</option>
+              <option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option><option value="Critical">Critical</option>
+            </select>
+          </div>
         </div>
-        
-        <select className="filter-select">
-          <option>Status: All Statuses</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Health: All</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Customer: All Accounts</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Sort: Newest First</option>
-        </select>
-
-        <div className="view-toggles">
-          <button className="view-toggle-btn active">
-            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-          </button>
-          <button className="view-toggle-btn">
-            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-          </button>
-        </div>
+        <DataTable columns={columns} data={filtered} emptyMessage="No quotations found." />
       </div>
 
-      {/* Empty State */}
-      <div className="empty-state">
-        <div className="empty-state-icon-container">
-          <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
-        <h3 className="empty-state-title">No Quotations Found</h3>
-        <p className="empty-state-desc">No quotations match your current search and filter criteria.</p>
-        <div className="empty-state-actions">
-          <Button variant="secondary">Reset Filters</Button>
-          <Button>+ New Quotation</Button>
-        </div>
-      </div>
+      <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Quote Detail — ${viewItem?.quoteId}`}>
+        {viewItem && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {[['Customer', viewItem.customer], ['Sales Rep', viewItem.rep], ['Amount', `₹${Number(viewItem.amount || 0).toLocaleString('en-IN')}`], ['Discount', `${viewItem.discount || 0}%`], ['Margin', `${viewItem.margin || 0}%`], ['Risk', viewItem.risk], ['Status', viewItem.status], ['Created', viewItem.created], ['Expiry', viewItem.expiry]].map(([label, val]) => (
+                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val}</div></div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
+              {viewItem.status === 'Pending' && <><button onClick={() => { handleStatusChange(viewItem, 'Approved'); setViewItem(null); }} className="btn btn-primary">Approve</button><button onClick={() => { handleStatusChange(viewItem, 'Rejected'); setViewItem(null); }} className="btn btn-danger">Reject</button></>}
+              {viewItem.status === 'Approved' && <button onClick={() => { handleStatusChange(viewItem, 'Confirmed'); setViewItem(null); }} className="btn btn-primary">Confirm Order</button>}
+              <button onClick={() => setViewItem(null)} className="btn btn-secondary">Close</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Quotation" message="Permanently delete this quotation?" />
     </div>
   );
 }

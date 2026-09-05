@@ -1,132 +1,180 @@
 import React, { useState } from 'react';
+import { getCustomers, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, DataTable, ConfirmDialog } from '../components/common/UI';
-import { getCustomers, saveEntity, deleteEntity } from '../services/storageService';
+
+const TIERS = ['Standard', 'Silver', 'Gold', 'Platinum', 'Enterprise'];
+const INDUSTRIES = ['Technology', 'Manufacturing', 'Healthcare', 'Finance', 'Retail', 'Food & Beverage', 'Biotech', 'Industrial', 'Aerospace', 'Energy'];
+const PAYMENT_TERMS = ['Net 15', 'Net 30', 'Net 45', 'Net 60', 'Net 90'];
+const emptyForm = { name: '', email: '', phone: '', industry: 'Technology', tier: 'Standard', creditLimit: '', paymentTerms: 'Net 30', status: 'Active' };
 
 function Customers() {
-  const [customers, setCustomers] = useState(() => getCustomers());
+  const [data, setData] = useState(() => getCustomers());
   const [search, setSearch] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [filterTier, setFilterTier] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = customers.filter(c => {
-    const s = search.toLowerCase();
-    return (c.name || '').toLowerCase().includes(s) || 
-           (c.company || '').toLowerCase().includes(s) ||
-           (c.email || '').toLowerCase().includes(s);
+  const refresh = () => setData(getCustomers());
+
+  const filtered = data.filter(c => {
+    const s = !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase());
+    return s && (!filterTier || c.tier === filterTier) && (!filterStatus || c.status === filterStatus);
   });
 
-  const handleDelete = (id) => {
-    setCustomerToDelete(id);
-    setShowConfirm(true);
+  const validate = () => {
+    const e = {};
+    if (!formData.name?.trim()) e.name = 'Required';
+    if (!formData.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Valid email required';
+    return e;
   };
 
-  const confirmDelete = () => {
-    const updated = deleteEntity('df_customers', customerToDelete);
-    setCustomers(updated);
-    toast.success("Customer record deleted.");
-    setShowConfirm(false);
+  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setLoading(true);
+    setTimeout(() => {
+      const isNew = !editingItem;
+      saveEntity('df_customers', formData, isNew);
+      addAuditLog(null, isNew ? 'Created Customer' : 'Updated Customer', 'Customer', `${isNew ? 'Created' : 'Updated'}: ${formData.name}`);
+      toast.success(isNew ? 'Customer created!' : 'Customer updated!');
+      setIsModalOpen(false); setLoading(false); refresh();
+    }, 400);
   };
+
+  const handleDelete = () => {
+    const c = data.find(x => x.id === deleteConfirmId);
+    deleteEntity('df_customers', deleteConfirmId);
+    addAuditLog(null, 'Deleted Customer', 'Customer', `Deleted: ${c?.name}`);
+    toast.info('Customer removed.'); setDeleteConfirmId(null); refresh();
+  };
+
+  const handleToggle = (c) => {
+    const ns = c.status === 'Active' ? 'Inactive' : 'Active';
+    saveEntity('df_customers', { ...c, status: ns }, false);
+    toast.success(`Customer ${ns.toLowerCase()}.`); refresh();
+  };
+
+  const totalCount = data.length;
+  const activeCount = data.filter(c => c.status === 'Active').length;
+  const enterpriseCount = data.filter(c => c.tier === 'Enterprise' || c.tier === 'Platinum').length;
+  const newThisMonth = data.filter(c => c.tier === 'Gold').length;
 
   const columns = [
-    { Header: 'Customer', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name || 'Unknown'}</strong> },
-    { Header: 'Company', accessor: 'company', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.company || '-'}</span> },
-    { Header: 'Tier', accessor: 'tier', sortable: true, Cell: row => <Badge type={row.tier === 'Enterprise' ? 'warning' : 'info'}>{row.tier || 'Standard'}</Badge> },
-    { Header: 'Credit Limit', accessor: 'creditLimit', sortable: true, Cell: row => <span style={{ fontWeight: 500 }}>${(row.creditLimit || 0).toLocaleString()}</span> },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || 'Active'}</Badge> },
-    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Button variant="secondary" style={{ padding: '0.375rem 0.75rem' }}>View Profile</Button>
-          <Button variant="danger" style={{ padding: '0.375rem 0.75rem' }} onClick={() => handleDelete(row.id)}>Delete</Button>
+    { Header: 'Company', accessor: 'name', sortable: true },
+    { Header: 'Email', accessor: 'email', sortable: true },
+    { Header: 'Industry', accessor: 'industry', sortable: true },
+    { Header: 'Tier', accessor: 'tier', sortable: true, Cell: row => <Badge>{row.tier}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_customers', { ...row, status: s }, false); toast.success(`Customer status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    {
+      Header: 'Actions', accessor: 'actions', sortable: false,
+      Cell: row => (
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
+          <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+          <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
         </div>
       )
     }
   ];
+
+  const inp = { width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', boxSizing: 'border-box' };
+  const lbl = { display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' };
 
   return (
     <div>
       <div className="page-header">
         <div className="page-title-group">
           <h1 className="page-title">Customer Directory</h1>
-          <p className="page-subtitle">Manage client accounts, assign tiers, and monitor credit limits for quoting.</p>
+          <p className="page-subtitle">Manage B2B customer accounts, tiers, credit limits and payment profiles.</p>
         </div>
-        <Button className="btn-primary">+ Add Customer</Button>
       </div>
 
       <div className="metric-grid">
-        <div className="metric-card active">
-          <div className="metric-header">
-            <span className="metric-title">TOTAL ACCOUNTS</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-          </div>
-          <div className="metric-value text-brand">{customers.length}</div>
-          <div className="metric-subtitle">Across all regions</div>
-        </div>
-        
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">ENTERPRISE TIER</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+            <span className="metric-title">TOTAL CUSTOMERS</span>
+            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
           </div>
-          <div className="metric-value text-warning">{customers.filter(c=>c.tier==='Enterprise').length}</div>
-          <div className="metric-subtitle">High priority clients</div>
+          <div className="metric-value text-success">{totalCount}</div>
+          <div className="metric-subtitle">Registered accounts</div>
         </div>
-
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">CREDIT LIMIT</span>
-            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span className="metric-title">ACTIVE CUSTOMERS</span>
+            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <div className="metric-value text-success">${(customers.reduce((sum, c) => sum + (c.creditLimit || 0), 0) / 1000).toFixed(0)}k</div>
-          <div className="metric-subtitle">Total exposure available</div>
+          <div className="metric-value text-brand">{activeCount}</div>
+          <div className="metric-subtitle">Currently buying</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">ENTERPRISE / PLATINUM</span>
+            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+          </div>
+          <div className="metric-value text-warning">{enterpriseCount}</div>
+          <div className="metric-subtitle">High-value tier accounts</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">GOLD TIER</span>
+            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          </div>
+          <div className="metric-value text-danger">{newThisMonth}</div>
+          <div className="metric-subtitle">Gold tier accounts</div>
         </div>
       </div>
 
-      <div className="filter-bar">
-        <div className="filter-search">
-          <svg className="filter-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input 
-            type="text" 
-            className="filter-search-input"
-            placeholder="Search by Name, Company, or Email..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        
-        <select className="filter-select">
-          <option>Tier: All Tiers</option>
-          <option>Enterprise</option>
-          <option>Platinum</option>
-          <option>Gold</option>
-        </select>
-        
-        <select className="filter-select">
-          <option>Status: Active Only</option>
-        </select>
-      </div>
-
-      <div className="card" style={{ padding: 0 }}>
-        {filtered.length > 0 ? (
-          <DataTable columns={columns} data={filtered} />
-        ) : (
-          <div className="empty-state" style={{ minHeight: '250px', border: 'none', backgroundColor: 'transparent' }}>
-            <div className="empty-state-icon-container">
-              <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-            </div>
-            <h3 className="empty-state-title">No Customers Found</h3>
-            <p className="empty-state-desc">Try adjusting your filters or search query.</p>
+      <div className="card">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>All Customers ({filtered.length})</span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ width: '180px', height: '32px' }} />
+            <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
+              <option value="">All Tiers</option>
+              {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
+              <option value="">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
           </div>
-        )}
+        </div>
+        <DataTable columns={columns} data={filtered} emptyMessage="No customers found." />
       </div>
 
-      <ConfirmDialog 
-        isOpen={showConfirm} 
-        onClose={() => setShowConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Delete Customer"
-        message="Are you sure you want to delete this customer? This action will not affect historical quotes or orders, but will prevent future transactions."
-      />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Customer">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div><label style={lbl}>Company Name *</label><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} />{errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.name}</p>}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={lbl}>Email *</label><input value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ ...inp, borderColor: errors.email ? '#ef4444' : '#d1d5db' }} />{errors.email && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.email}</p>}</div>
+            <div><label style={lbl}>Phone</label><input value={formData.phone || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={inp} /></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={lbl}>Industry</label><select value={formData.industry || ''} onChange={e => setFormData({ ...formData, industry: e.target.value })} style={inp}>{INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}</select></div>
+            <div><label style={lbl}>Customer Tier</label><select value={formData.tier || ''} onChange={e => setFormData({ ...formData, tier: e.target.value })} style={inp}>{TIERS.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div><label style={lbl}>Credit Limit (₹)</label><input type="number" value={formData.creditLimit || ''} onChange={e => setFormData({ ...formData, creditLimit: Number(e.target.value) })} style={inp} /></div>
+            <div><label style={lbl}>Payment Terms</label><select value={formData.paymentTerms || ''} onChange={e => setFormData({ ...formData, paymentTerms: e.target.value })} style={inp}>{PAYMENT_TERMS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+          </div>
+          <div><label style={lbl}>Status</label><select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} style={inp}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Cancel</button>
+            <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Saving…' : 'Update Customer'}</button>
+          </div>
+        </form>
+      </Modal>
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Customer" message="Permanently remove this customer?" />
     </div>
   );
 }
