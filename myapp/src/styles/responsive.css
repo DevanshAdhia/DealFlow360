@@ -1,0 +1,134 @@
+/* Responsive Layout Adaptations */
+
+/* Desktop & Ultra Wide (1440px+) */
+@media (min-width: 1440px) {
+  .container-xl {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Laptop (1024px to 1439px) */
+@media (max-width: 1439px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Tablet (768px to 1023px) */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .auth-hero-section {
+    display: none !important;
+  }
+
+  .auth-form-section {
+    width: 100% !important;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+  }
+
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block !important;
+  }
+
+  .main-content-area {
+    margin-left: 0 !important;
+  }
+}
+
+/* Mobile (320px to 767px) */
+@media (max-width: 767px) {
+  .auth-container {
+    padding: 1rem !important;
+  }
+
+  .auth-card {
+    padding: 1.5rem !important;
+  }
+
+  .header-actions {
+    gap: 0.5rem !important;
+  }
+
+  .user-role-badge {
+    display: none;
+  }
+
+  .header-search {
+    display: none !important;
+  }
+
+  .kpi-card {
+    padding: 1rem !important;
+  }
+
+  .quick-demo-pills {
+    flex-wrap: wrap;
+  }
+}
+
+/* Automatic overrides for all inline grids on Tablet and Mobile */
+@media (max-width: 1024px) {
+  /* Stack standard 2-column layouts */
+  div[style*="grid-template-columns: 1fr 340px"],
+  div[style*="grid-template-columns: 1fr 380px"],
+  div[style*="grid-template-columns: 1fr 400px"],
+  div[style*="grid-template-columns: 1fr 1fr"],
+  div[style*="grid-template-columns: 2fr 1fr"],
+  div[style*="grid-template-columns: repeat(2, 1fr)"],
+  div[style*="grid-template-columns: repeat(3, 1fr)"],
+  div[style*="gridTemplateColumns: '1fr 340px'"],
+  div[style*="gridTemplateColumns: '1fr 380px'"],
+  div[style*="gridTemplateColumns: '1fr 1fr'"],
+  div[style*="gridTemplateColumns: '2fr 1fr'"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Make all tables scrollable horizontally without breaking the page width */
+  table {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+}
+
+/* Ensure padding and margins scale down nicely */
+@media (max-width: 767px) {
+  .card {
+    padding: 1rem !important;
+  }
+  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .btn {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.8125rem !important;
+  }
+}

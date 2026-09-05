@@ -1,0 +1,103 @@
+// DealFlow360 — Customer Accounts Database (Admin-Configured Mock Data)
+
+export const MOCK_CUSTOMERS = [
+  {
+    id: 'CUS-001',
+    customerCode: 'CUST-ACME',
+    companyName: 'Acme Corporation',
+    contactName: 'Sarah Connor',
+    email: 's.connor@acmecorp.com',
+    phone: '+1 (555) 234-5678',
+    industry: 'Enterprise Software & Cloud',
+    customerTierId: 'TIER-001',
+    tier: 'Enterprise Platinum',
+    paymentTerms: 'Net 45',
+    billingAddress: '100 Silicon Ave, Suite 400, San Francisco, CA 94107',
+    shippingAddress: '100 Silicon Ave, Dock B, San Francisco, CA 94107',
+    city: 'San Francisco',
+    gstin: '27AABCA1234A1Z5',
+    status: 'ACTIVE',
+    creditLimit: 5000000,
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'CUS-002',
+    customerCode: 'CUST-NOVA',
+    companyName: 'NovaTech Solutions',
+    contactName: 'Michael Chang',
+    email: 'm.chang@novatech.io',
+    phone: '+1 (555) 345-6789',
+    industry: 'Cybersecurity & Defense',
+    customerTierId: 'TIER-002',
+    tier: 'Mid-Market Silver',
+    paymentTerms: 'Net 30',
+    billingAddress: '450 Innovation Parkway, Austin, TX 78701',
+    shippingAddress: '450 Innovation Parkway, Receiving Bay 3, Austin, TX 78701',
+    city: 'Austin',
+    gstin: '24AABCN1234B2Z6',
+    status: 'ACTIVE',
+    creditLimit: 2000000,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'CUS-003',
+    customerCode: 'CUST-GBL',
+    companyName: 'GlobalSoft Industries',
+    contactName: 'Jessica Sterling',
+    email: 'j.sterling@globalsoft.com',
+    phone: '+1 (555) 456-7890',
+    industry: 'Financial Technology',
+    customerTierId: 'TIER-001',
+    tier: 'Enterprise Platinum',
+    paymentTerms: 'Net 45',
+    billingAddress: '742 Financial Plaza, New York, NY 10005',
+    shippingAddress: '742 Financial Plaza, Floor 18, New York, NY 10005',
+    city: 'New York',
+    gstin: '29AABCG1234C3Z7',
+    status: 'ACTIVE',
+    creditLimit: 5000000,
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'CUS-004',
+    customerCode: 'CUST-VTX',
+    companyName: 'Vertex Systems',
+    contactName: 'Robert Vance',
+    email: 'r.vance@vertexsystems.com',
+    phone: '+1 (555) 567-8901',
+    industry: 'Aerospace & Telemetry',
+    customerTierId: 'TIER-002',
+    tier: 'Mid-Market Silver',
+    paymentTerms: 'Net 30',
+    billingAddress: '880 Aerospace Way, Seattle, WA 98101',
+    shippingAddress: '880 Aerospace Way, Hangar 4, Seattle, WA 98101',
+    city: 'Seattle',
+    gstin: '33AABCH1234D4Z8',
+    status: 'ACTIVE',
+    creditLimit: 2000000,
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'CUS-005',
+    customerCode: 'CUST-BLU',
+    companyName: 'BluePeak Technologies',
+    contactName: 'Elena Rostova',
+    email: 'e.rostova@bluepeak.tech',
+    phone: '+1 (555) 678-9012',
+    industry: 'Data Infrastructure & AI',
+    customerTierId: 'TIER-003',
+    tier: 'Commercial Standard',
+    paymentTerms: 'Net 30',
+    billingAddress: '320 Tech Row, Boston, MA 02110',
+    shippingAddress: '320 Tech Row, Suite 100, Boston, MA 02110',
+    city: 'Boston',
+    gstin: '36AABCB1234E5Z9',
+    status: 'ACTIVE',
+    creditLimit: 500000,
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80'
+  }
+];
+
+export const getCustomerById = (id) => {
+  return MOCK_CUSTOMERS.find(c => c.id === id || c.id === id.replace('CUST-', 'CUS-')) || MOCK_CUSTOMERS[0];
+};

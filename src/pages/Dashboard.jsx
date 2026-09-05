@@ -220,7 +220,7 @@ function Dashboard() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
             <div className="card">
-              <div className="card-header">Quote Conversion Health</div>
+              <div className="card-header">Quote Conversion</div>
               <div className="card-body">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.875rem' }}>Approved & Confirmed</span>

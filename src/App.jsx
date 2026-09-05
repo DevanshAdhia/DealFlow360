@@ -30,20 +30,25 @@ const Placeholder = ({ title }) => <div className="page-header"><h1 className="p
 initializeData();
 
 function App() {
-  const [session, setSession] = useState(() => getSession());
+  const [session, setSessionState] = useState(() => getSession());
 
   const handleLogin = (user) => {
     setSession(user);
+    setSessionState(user);
   };
 
   const handleLogout = () => {
     setSession(null);
+    setSessionState(null);
   };
 
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={
+          session ? <Navigate to="/admin/dashboard" /> : <Login onLogin={handleLogin} />
+        } />
+        <Route path="/signup" element={
           session ? <Navigate to="/admin/dashboard" /> : <Login onLogin={handleLogin} />
         } />
         
