@@ -61,3 +61,33 @@ export const initialSettings = {
   approvalTimeout: 48,
   lowStockThreshold: 10
 };
+
+export const initialPriceLists = [
+  { id: 'pl1', name: 'Enterprise Base', tier: 'Enterprise', currency: 'USD', effective: '2023-01-01', expiry: '2024-12-31', status: 'Active' },
+  { id: 'pl2', name: 'SMB Standard', tier: 'Standard', currency: 'USD', effective: '2023-01-01', expiry: '2024-12-31', status: 'Active' }
+];
+
+export const initialQuotations = [
+  { id: 'q1', quoteId: 'Q-1024', customer: 'Acme Corp', rep: 'John Doe', amount: 54000, discount: 10, margin: 25, risk: 'Low', status: 'Approved', created: '2023-10-15', expiry: '2023-11-15' },
+  { id: 'q2', quoteId: 'Q-1025', customer: 'Globex Inc', rep: 'John Doe', amount: 12500, discount: 20, margin: 12, risk: 'High', status: 'Pending', created: '2023-10-18', expiry: '2023-11-18' }
+];
+
+export const initialOrders = [
+  { id: 'o1', orderId: 'ORD-5501', customer: 'Acme Corp', quoteId: 'Q-1024', amount: 54000, status: 'Processing', fulfillment: 'Pending', payment: 'Unpaid', created: '2023-10-20' },
+  { id: 'o2', orderId: 'ORD-5502', customer: 'Globex Inc', quoteId: 'Q-0990', amount: 8500, status: 'Fulfilled', fulfillment: 'Shipped', payment: 'Paid', created: '2023-09-12' }
+];
+
+export const initialWarehouses = [
+  { id: 'wh1', name: 'Main Hub', location: 'New York, NY', manager: 'Mike Ross', capacity: '100,000 sqft', status: 'Active' },
+  { id: 'wh2', name: 'West Coast', location: 'Los Angeles, CA', manager: 'Sarah Connor', capacity: '75,000 sqft', status: 'Active' }
+];
+
+export const initialInvoices = [
+  { id: 'inv_1', invoiceId: 'INV-2023-001', customer: 'Globex Inc', order: 'ORD-5502', amount: 8500, due: '2023-10-12', status: 'Paid' },
+  { id: 'inv_2', invoiceId: 'INV-2023-002', customer: 'Acme Corp', order: 'ORD-5501', amount: 54000, due: '2023-11-20', status: 'Issued' }
+];
+
+export const initialNotifications = [
+  { id: 'n1', title: 'Pending Approval', type: 'Approval', recipient: 'Sarah Connor', priority: 'High', status: 'Unread', created: '2023-10-18' },
+  { id: 'n2', title: 'Low Stock Alert', type: 'Inventory', recipient: 'Mike Ross', priority: 'Medium', status: 'Read', created: '2023-10-19' }
+];

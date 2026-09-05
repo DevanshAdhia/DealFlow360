@@ -1,6 +1,7 @@
 import { 
   initialUsers, initialRoles, initialCustomers, initialCategories, initialProducts,
-  initialDiscountRules, initialApprovalRules, initialInventory, initialAuditLogs, initialSettings 
+  initialDiscountRules, initialApprovalRules, initialInventory, initialAuditLogs, initialSettings,
+  initialPriceLists, initialQuotations, initialOrders, initialWarehouses, initialInvoices, initialNotifications
 } from '../data/mockData';
 
 // Generic get/set for localStorage
@@ -33,6 +34,12 @@ export const initializeData = () => {
   if (!localStorage.getItem('df_inventory')) setToStorage('df_inventory', initialInventory);
   if (!localStorage.getItem('df_audit')) setToStorage('df_audit', initialAuditLogs);
   if (!localStorage.getItem('df_settings')) setToStorage('df_settings', initialSettings);
+  if (!localStorage.getItem('df_pricelists')) setToStorage('df_pricelists', initialPriceLists);
+  if (!localStorage.getItem('df_quotations')) setToStorage('df_quotations', initialQuotations);
+  if (!localStorage.getItem('df_orders')) setToStorage('df_orders', initialOrders);
+  if (!localStorage.getItem('df_warehouses')) setToStorage('df_warehouses', initialWarehouses);
+  if (!localStorage.getItem('df_invoices')) setToStorage('df_invoices', initialInvoices);
+  if (!localStorage.getItem('df_notifications')) setToStorage('df_notifications', initialNotifications);
 };
 
 // Session
@@ -51,6 +58,13 @@ export const getInventory = () => getFromStorage('df_inventory', []);
 export const getAuditLogs = () => getFromStorage('df_audit', []);
 export const getSettings = () => getFromStorage('df_settings', {});
 export const setSettings = (settings) => setToStorage('df_settings', settings);
+
+export const getPriceLists = () => getFromStorage('df_pricelists', []);
+export const getQuotations = () => getFromStorage('df_quotations', []);
+export const getOrders = () => getFromStorage('df_orders', []);
+export const getWarehouses = () => getFromStorage('df_warehouses', []);
+export const getInvoices = () => getFromStorage('df_invoices', []);
+export const getNotifications = () => getFromStorage('df_notifications', []);
 
 export const addAuditLog = (user, action, entity, description) => {
   const logs = getAuditLogs();
