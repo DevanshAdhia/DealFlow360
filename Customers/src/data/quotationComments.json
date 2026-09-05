@@ -1,0 +1,47 @@
+[
+  {
+    "id": "CMT-1042-1",
+    "quotationId": "Q-1042",
+    "author": "Sarah Connor",
+    "authorRole": "Customer",
+    "text": "Please confirm whether onsite deployment includes data migration for existing laptops.",
+    "createdAt": "2026-09-06T08:45:00Z",
+    "visibility": "CUSTOMER_VISIBLE"
+  },
+  {
+    "id": "CMT-1042-2",
+    "quotationId": "Q-1042",
+    "author": "Alex Morgan",
+    "authorRole": "Sales Representative",
+    "text": "Yes Sarah, our deployment engineers will handle full profile and local file migration during the scheduled window.",
+    "createdAt": "2026-09-06T09:00:00Z",
+    "visibility": "CUSTOMER_VISIBLE"
+  },
+  {
+    "id": "CMT-1042-INT",
+    "quotationId": "Q-1042",
+    "author": "Finance Officer",
+    "authorRole": "Internal",
+    "text": "Internal note: Margin benchmarked at 32%.",
+    "createdAt": "2026-09-06T08:35:00Z",
+    "visibility": "INTERNAL_ONLY"
+  },
+  {
+    "id": "CMT-1038-1",
+    "quotationId": "Q-1038",
+    "author": "Sarah Connor",
+    "authorRole": "Customer",
+    "text": "We need five additional units if the unit price can be adjusted to 15% discount.",
+    "createdAt": "2026-09-05T14:20:00Z",
+    "visibility": "CUSTOMER_VISIBLE"
+  },
+  {
+    "id": "CMT-1038-2",
+    "quotationId": "Q-1038",
+    "author": "Elena Vance",
+    "authorRole": "Sales Representative",
+    "text": "Requested change is under commercial review with our regional director.",
+    "createdAt": "2026-09-05T15:00:00Z",
+    "visibility": "CUSTOMER_VISIBLE"
+  }
+]

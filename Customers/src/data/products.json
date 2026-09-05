@@ -1,0 +1,74 @@
+[
+  {
+    "id": "PROD-007",
+    "productCode": "PRD-LPT-PRO14",
+    "name": "Laptop Pro 14",
+    "categoryId": "CAT-002",
+    "subcategoryId": "SUBCAT-001",
+    "description": "High-performance enterprise laptop with 14-inch retina display, M3 Max chip, and 32GB unified memory.",
+    "unitPrice": 84000,
+    "unit": "Unit",
+    "defaultQty": 2,
+    "gstRate": 18
+  },
+  {
+    "id": "PROD-008",
+    "productCode": "PRD-SRV-SETUP",
+    "name": "Onsite Setup & Deployment",
+    "categoryId": "CAT-004",
+    "subcategoryId": "SUBCAT-004",
+    "description": "Professional deployment engineering, domain migration, and enterprise network integration.",
+    "unitPrice": 15000,
+    "unit": "Service Pack",
+    "defaultQty": 1,
+    "gstRate": 18
+  },
+  {
+    "id": "PROD-001",
+    "productCode": "PRD-CF-ENT",
+    "name": "Cloud DealFlow Enterprise (Per Seat)",
+    "categoryId": "CAT-001",
+    "subcategoryId": "SUBCAT-003",
+    "description": "Full-featured Quote-to-Cash SaaS license including CPQ engine & real-time governance.",
+    "unitPrice": 3200,
+    "unit": "Seat / Month",
+    "defaultQty": 25,
+    "gstRate": 18
+  },
+  {
+    "id": "PROD-002",
+    "productCode": "PRD-SEC-GATE",
+    "name": "Security Gateway Appliance Pro",
+    "categoryId": "CAT-002",
+    "subcategoryId": "SUBCAT-002",
+    "description": "Dedicated enterprise security hardware module with hardware-level encryption and intrusion detection.",
+    "unitPrice": 185000,
+    "unit": "Appliance",
+    "defaultQty": 2,
+    "gstRate": 18
+  },
+  {
+    "id": "PROD-003",
+    "productCode": "PRD-CORE-PIPE",
+    "name": "Global Data Pipeline Core Engine",
+    "categoryId": "CAT-003",
+    "subcategoryId": "SUBCAT-003",
+    "description": "High-throughput event streaming & multi-region database synchronization hub.",
+    "unitPrice": 750000,
+    "unit": "Cluster License",
+    "defaultQty": 1,
+    "gstRate": 18
+  },
+  {
+    "id": "PROD-004",
+    "productCode": "PRD-SLA-SUPP",
+    "name": "24/7 Dedicated SLA Support Tier",
+    "categoryId": "CAT-004",
+    "subcategoryId": "SUBCAT-004",
+    "description": "15-minute response time SLA, dedicated Technical Account Manager, and custom escalation tree.",
+    "unitPrice": 140000,
+    "unit": "Annual Package",
+    "defaultQty": 1,
+    "gstRate": 18
+  }
+]

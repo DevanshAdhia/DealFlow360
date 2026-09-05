@@ -1,0 +1,10 @@
+[
+  {
+    "id": "NEGI-1038-1",
+    "negotiationRequestId": "NEG-1038",
+    "quotationItemId": "QI-1038-1",
+    "changeType": "Discount Request",
+    "currentValue": "12%",
+    "requestedValue": "15%"
+  }
+]
