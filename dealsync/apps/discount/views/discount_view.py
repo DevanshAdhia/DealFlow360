@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.discount.models import Discount
 from apps.discount.serializers import DiscountSerializer, DiscountCreateSerializer, DiscountUpdateSerializer
 from apps.discount.services import DiscountService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Discount"])

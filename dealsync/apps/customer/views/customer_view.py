@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.customer.models import Customer
 from apps.customer.serializers import CustomerSerializer, CustomerCreateSerializer, CustomerUpdateSerializer
 from apps.customer.services import CustomerService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Customer"])

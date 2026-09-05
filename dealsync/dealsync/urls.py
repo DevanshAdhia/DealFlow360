@@ -7,7 +7,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
-from common.health import health_check
+from dealsync.health import health_check
 
 urlpatterns = [
     path("admin/", admin.site.urls),

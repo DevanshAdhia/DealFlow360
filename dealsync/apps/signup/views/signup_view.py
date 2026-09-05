@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.signup.models import Signup
 from apps.signup.serializers import SignupSerializer, SignupCreateSerializer, SignupUpdateSerializer
 from apps.signup.services import SignupService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Signup"])

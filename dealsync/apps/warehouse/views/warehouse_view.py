@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.warehouse.models import Warehouse
 from apps.warehouse.serializers import WarehouseSerializer, WarehouseCreateSerializer, WarehouseUpdateSerializer
 from apps.warehouse.services import WarehouseService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Warehouse"])

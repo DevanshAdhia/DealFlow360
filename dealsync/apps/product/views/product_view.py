@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.product.models import Product
 from apps.product.serializers import ProductSerializer, ProductCreateSerializer, ProductUpdateSerializer
 from apps.product.services import ProductService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Product"])

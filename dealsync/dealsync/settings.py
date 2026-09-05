@@ -3,12 +3,12 @@ from pathlib import Path
 import environ
 
 env = environ.Env()
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 SECRET_KEY = env("SECRET_KEY", default="unsafe-secret-key-change-in-production")
-DEBUG = env.bool("DEBUG", default=False)
+DEBUG = env.bool("DEBUG", default=True)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 DJANGO_APPS = [
@@ -52,7 +52,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "common.middleware.RequestLoggingMiddleware",
+    "dealsync.middleware.RequestLoggingMiddleware",
 ]
 
 ROOT_URLCONF = "dealsync.urls"
@@ -137,9 +137,9 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
-    "DEFAULT_PAGINATION_CLASS": "common.pagination.StandardResultsPagination",
+    "DEFAULT_PAGINATION_CLASS": "dealsync.pagination.StandardResultsPagination",
     "PAGE_SIZE": 20,
-    "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
+    "EXCEPTION_HANDLER": "dealsync.exceptions.custom_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 

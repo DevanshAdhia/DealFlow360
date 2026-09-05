@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.login.models import Login
 from apps.login.serializers import LoginSerializer, LoginCreateSerializer, LoginUpdateSerializer
 from apps.login.services import LoginService
-from common.pagination import StandardResultsPagination
-from common.responses import success_response, error_response
+from dealsync.pagination import StandardResultsPagination
+from dealsync.responses import success_response, error_response
 
 
 @extend_schema(tags=["Login"])
