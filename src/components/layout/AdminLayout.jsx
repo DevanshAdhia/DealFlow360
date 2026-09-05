@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { getNotifications } from '../../services/storageService';
+import { getNotifications, setSession } from '../../services/storageService';
+import { toast } from 'react-toastify';
 
 // Reusable SVG Icons
 const Icons = {
@@ -24,7 +25,7 @@ const Icons = {
   ChevronDown: <svg className="nav-icon" style={{ width: '16px', height: '16px', marginLeft: 'auto', transition: 'transform 0.2s' }} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
 };
 
-function AdminLayout() {
+function AdminLayout({ onLogout, user }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -36,6 +37,17 @@ function AdminLayout() {
   useEffect(() => {
     if (isRulesPath) setIsRulesOpen(true);
   }, [location.pathname, isRulesPath]);
+
+  const handleLogoutClick = () => {
+    setSession(null);
+    if (onLogout) onLogout();
+    toast.info('Logged out successfully.');
+    navigate('/login');
+  };
+
+  const userName = user?.name || 'Super Admin';
+  const userEmail = user?.email || 'admin@dealflow360.com';
+  const userRole = user?.role || 'Admin';
 
   return (
     <div className="admin-layout">
@@ -64,13 +76,13 @@ function AdminLayout() {
 
         <div className="sidebar-profile">
           <div className="profile-avatar">
-            <img src="https://ui-avatars.com/api/?name=Admin+User&background=E0E7FF&color=4F46E5" alt="Admin User" style={{width: '100%', height: '100%', borderRadius: '50%'}} />
+            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E0E7FF&color=4F46E5`} alt={userName} style={{width: '100%', height: '100%', borderRadius: '50%'}} />
           </div>
           {!isCollapsed && (
             <div className="profile-info">
-              <span className="profile-name">Admin User</span>
-              <span className="profile-role">admin@dealflow360.com</span>
-              <div><span className="profile-badge">System Admin</span></div>
+              <span className="profile-name">{userName}</span>
+              <span className="profile-role">{userEmail}</span>
+              <div><span className="profile-badge">{userRole}</span></div>
             </div>
           )}
         </div>
@@ -139,7 +151,7 @@ function AdminLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="switch-persona-btn" onClick={() => navigate('/login')}>
+          <button className="switch-persona-btn" onClick={handleLogoutClick}>
             {Icons.User}
             <span>Logout</span>
           </button>

@@ -30,14 +30,16 @@ const Placeholder = ({ title }) => <div className="page-header"><h1 className="p
 initializeData();
 
 function App() {
-  const [session, setSession] = useState(() => getSession());
+  const [session, setSessionState] = useState(() => getSession());
 
   const handleLogin = (user) => {
     setSession(user);
+    setSessionState(user);
   };
 
   const handleLogout = () => {
     setSession(null);
+    setSessionState(null);
   };
 
   return (

@@ -52,7 +52,10 @@ export const initializeData = () => {
 
 // Session
 export const getSession = () => getFromStorage('df_session', null);
-export const setSession = (user) => setToStorage('df_session', user);
+export const setSession = (user) => {
+  if (user) setToStorage('df_session', user);
+  else localStorage.removeItem('df_session');
+};
 
 // Data getters
 export const getUsers = () => getFromStorage('df_users', []);
