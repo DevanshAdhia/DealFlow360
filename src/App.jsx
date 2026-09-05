@@ -46,6 +46,9 @@ function App() {
         <Route path="/login" element={
           session ? <Navigate to="/admin/dashboard" /> : <Login onLogin={handleLogin} />
         } />
+        <Route path="/signup" element={
+          session ? <Navigate to="/admin/dashboard" /> : <Login onLogin={handleLogin} />
+        } />
         
         <Route path="/admin" element={
           session ? <AdminLayout onLogout={handleLogout} user={session} /> : <Navigate to="/login" />
