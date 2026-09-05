@@ -1,0 +1,611 @@
+/* DealFlow360 — Phase 3 Quotations Stylesheet */
+
+.quotations-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Quotation KPI Stats Grid */
+.quote-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+}
+
+.quote-stat-card {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  text-align: left;
+}
+
+.quote-stat-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.quote-stat-card.active {
+  border-color: var(--primary-500);
+  background: var(--bg-surface-2);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+.quote-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quote-stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quote-stat-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  font-family: var(--font-display);
+}
+
+.quote-stat-sub {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+}
+
+/* Quotations Filters & Search Toolbar */
+.quote-filters-card {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.quote-filters-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.quote-filters-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.view-toggle-group {
+  display: flex;
+  background-color: var(--bg-dark-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+
+.view-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.view-toggle-btn.active {
+  background-color: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+/* Quotation Card Grid View (Alternative to Table) */
+.quote-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.quote-card-item {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.quote-card-item:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.quote-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.quote-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* 3-Step Create Quotation Wizard Styles */
+.wizard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.wizard-steps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 2rem;
+  position: relative;
+}
+
+.wizard-step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.wizard-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background-color: var(--bg-surface-3);
+  color: var(--text-muted);
+  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.wizard-step-indicator.active .wizard-step-circle {
+  background-color: var(--primary-600);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.wizard-step-indicator.completed .wizard-step-circle {
+  background-color: var(--color-success);
+  color: #ffffff;
+}
+
+.wizard-step-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-step-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wizard-step-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.wizard-step-divider {
+  flex: 1;
+  height: 2px;
+  background: var(--border-subtle);
+  margin: 0 1rem;
+}
+
+.wizard-step-divider.completed {
+  background: var(--color-success);
+}
+
+/* Customer Selector Grid */
+.customer-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.customer-card-option {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.125rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.customer-card-option:hover {
+  background: var(--bg-surface-3);
+  border-color: var(--border-medium);
+}
+
+.customer-card-option.selected {
+  border-color: var(--primary-500);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.2);
+}
+
+.customer-avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border-medium);
+}
+
+/* Line Item Builder Table & Summary */
+.line-items-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.line-item-row {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1.2fr 1.2fr 40px;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--bg-surface-2);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.commercials-calculation-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  align-items: start;
+}
+
+.discount-controls-box {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.discount-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.governance-warning-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+}
+
+.governance-warning-box.critical {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.governance-success-box {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+}
+
+/* Deal Health & Margin Impact Visual Chart Box */
+.deal-health-chart-box {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.deal-breakdown-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.deal-breakdown-bar {
+  height: 12px;
+  width: 100%;
+  background: var(--bg-surface-3);
+  border-radius: var(--radius-full);
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.bar-segment {
+  height: 100%;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar-segment.realized {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+}
+
+.bar-segment.discount-low {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.bar-segment.discount-warning {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.bar-segment.discount-critical {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.deal-threshold-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.scale-track {
+  position: relative;
+  height: 6px;
+  background: var(--bg-surface-3);
+  border-radius: var(--radius-full);
+}
+
+.scale-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.35s ease, background-color 0.35s ease;
+}
+
+.scale-marker-15 {
+  position: absolute;
+  left: 30%; /* 15% out of 50% max scale */
+  top: -4px;
+  width: 2px;
+  height: 14px;
+  background: var(--color-warning);
+  border-radius: 1px;
+}
+
+.scale-marker-label {
+  position: absolute;
+  left: 30%;
+  top: 12px;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chart-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.chart-stat-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chart-stat-label {
+  font-size: 0.675rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.chart-stat-value {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.pricing-summary-box {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 380px;
+  margin-left: auto;
+  width: 100%;
+}
+
+.pricing-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.pricing-summary-row.total {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0.25rem;
+}
+
+/* Quotation Details Page 2-Column Layout */
+.quote-detail-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+.quote-stage-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.stage-step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.stage-step-item.active {
+  color: var(--primary-500);
+}
+
+.stage-step-item.passed {
+  color: var(--color-success);
+}
+
+/* Responsive Media Queries */
+@media (max-width: 1400px) {
+  .quote-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .quote-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .quote-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .customer-picker-grid {
+    grid-template-columns: 1fr;
+  }
+  .line-item-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .quote-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .quote-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .wizard-steps-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .wizard-step-divider {
+    display: none;
+  }
+  .quote-filters-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .quote-filters-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .quote-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

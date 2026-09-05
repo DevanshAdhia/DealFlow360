@@ -1,0 +1,42 @@
+[
+  {
+    "id": "QA-001",
+    "quotationId": "QID-002",
+    "quotationNumber": "Q-1002",
+    "approvalCycle": 1,
+    "sequence": 1,
+    "approvalLevelId": "AL-001",
+    "approverId": "USR-002",
+    "approverName": "Sarah Jenkins",
+    "approverRole": "SALES_MANAGER",
+    "approverTitle": "VP of Global Sales",
+    "status": "PENDING",
+    "action": null,
+    "riskScore": 78,
+    "riskLevel": "HIGH",
+    "reason": null,
+    "comment": null,
+    "submittedAt": "2026-09-05T07:45:00Z",
+    "reviewedAt": null
+  },
+  {
+    "id": "QA-002",
+    "quotationId": "QID-002",
+    "quotationNumber": "Q-1002",
+    "approvalCycle": 1,
+    "sequence": 2,
+    "approvalLevelId": "AL-002",
+    "approverId": "USR-003",
+    "approverName": "Marcus Vance",
+    "approverRole": "FINANCE_DIRECTOR",
+    "approverTitle": "Director of Commercial Finance",
+    "status": "WAITING",
+    "action": null,
+    "riskScore": 78,
+    "riskLevel": "HIGH",
+    "reason": null,
+    "comment": null,
+    "submittedAt": "2026-09-05T07:45:00Z",
+    "reviewedAt": null
+  }
+]

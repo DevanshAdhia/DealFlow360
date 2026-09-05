@@ -80,23 +80,12 @@ myapp/
 │   │   └── DashboardLayout.jsx          # App shell (Sidebar + Header + Outlet)
 │   ├── pages/                           # Application page views
 │   │   ├── auth/                        # Login & ForgotPassword pages
+│   │   ├── CreateQuotation.jsx          # 3-step CPQ quote creation wizard (/quotations/new)
 │   │   ├── Dashboard.jsx                # Main Sales Rep Workspace (/dashboard)
-│   │   ├── Quotations.jsx               # Quotations ledger (/quotations)
-│   │   ├── CreateQuotation.jsx          # CPQ Quote Creation Wizard (/quotations/new)
-│   │   ├── QuotationDetail.jsx          # Full quotation record (/quotations/:id)
 │   │   ├── Pipeline.jsx                 # Kanban Sales Pipeline (/pipeline)
-│   │   ├── Customers.jsx                # Customer Accounts Directory (/customers)
-│   │   ├── Approvals.jsx                # Multi-tier Approval Center (/approvals)
-│   │   ├── ApprovalDetail.jsx           # Approval decision drawer (/approvals/:id)
-│   │   ├── Fulfillment.jsx              # Order Fulfillment & Dispatch (/fulfillment)
-│   │   ├── FulfillmentDetail.jsx        # Allocation & AWB tracking (/fulfillment/:id)
-│   │   ├── Warehouses.jsx               # Facility inventory & capacity (/warehouses)
-│   │   ├── Billing.jsx                  # Billing Overview & Receivables (/billing)
-│   │   ├── Invoices.jsx                 # Tax Invoices Ledger (/invoices)
-│   │   ├── InvoiceDetail.jsx            # Printable Tax Invoice (/invoices/:id)
-│   │   ├── Subscriptions.jsx            # SaaS Recurring Subscriptions (/subscriptions)
-│   │   ├── Reports.jsx                  # Executive RevOps Analytics & Charts (/reports)
-│   │   └── Settings.jsx                 # Governance, RBAC & Tax Config (/settings)
+│   │   ├── QuotationDetail.jsx          # Full quotation record (/quotations/:id)
+│   │   ├── Quotations.jsx               # Quotations ledger (/quotations)
+│   │   └── ... (Module placeholders)    # Future phase placeholders
 │   ├── routes/                          # React Router configuration
 │   │   ├── AppRoutes.jsx                # Route definitions & guards
 │   │   └── ProtectedRoute.jsx           # Role-based route guard
@@ -105,11 +94,6 @@ myapp/
 │       ├── global.css                   # Global reset, typography, buttons, inputs
 │       ├── pipeline.css                 # Kanban board styling
 │       ├── quotations.css               # Quotation ledger & wizard styling
-│       ├── builder.css                  # CPQ builder styling
-│       ├── approvals.css                # Approval center styling
-│       ├── billing.css                  # Invoicing & billing styling
-│       ├── customers.css                # Customer directory styling
-│       ├── settings.css                 # Governance & settings styling
 │       ├── responsive.css               # Mobile & tablet layout rules
 │       └── variables.css                # Design system tokens (colors, radii, shadows)
 ├── index.html
@@ -127,9 +111,4 @@ For complete technical details on how each module works, explore the [`docs/`](f
 2. [**Phase 1: Authentication & Navigation Shell**](file:///f:/odoo-dealflow/myapp/docs/PHASE1_AUTHENTICATION_AND_SHELL.md)
 3. [**Phase 2: Sales Rep Dashboard Workspace**](file:///f:/odoo-dealflow/myapp/docs/PHASE2_DASHBOARD_WORKSPACE.md)
 4. [**Phase 3: Quotation Management & Sales Pipeline**](file:///f:/odoo-dealflow/myapp/docs/PHASE3_QUOTATIONS_AND_PIPELINE.md)
-5. [**Phase 4: Multi-Tier Approval Workflow Matrix**](file:///f:/odoo-dealflow/myapp/docs/PHASE4_APPROVALS_AND_GOVERNANCE.md)
-6. [**Phase 5: Multi-Warehouse Fulfillment & Logistics**](file:///f:/odoo-dealflow/myapp/docs/PHASE5_FULFILLMENT_AND_WAREHOUSES.md)
-7. [**Phase 6: Billing, Invoicing & Subscription Ledger**](file:///f:/odoo-dealflow/myapp/docs/PHASE6_BILLING_AND_INVOICING.md)
-8. [**Phase 7: Advanced RevOps Intelligence & Customers**](file:///f:/odoo-dealflow/myapp/docs/PHASE7_REVOPS_INTELLIGENCE_AND_CUSTOMERS.md)
-9. [**Developer Guide & Architecture**](file:///f:/odoo-dealflow/myapp/docs/DEVELOPMENT_GUIDE.md)
-
+5. [**Developer Guide & Future Phases**](file:///f:/odoo-dealflow/myapp/docs/DEVELOPMENT_GUIDE.md)

@@ -1,0 +1,46 @@
+[
+  {
+    "id": "SCH-001",
+    "subscriptionId": "SUB-001",
+    "invoiceId": "INV-1043",
+    "cycleNumber": 1,
+    "billingDate": "2026-08-15",
+    "periodStart": "2026-08-15",
+    "periodEnd": "2026-09-14",
+    "amount": 48,
+    "status": "PAID"
+  },
+  {
+    "id": "SCH-002",
+    "subscriptionId": "SUB-001",
+    "invoiceId": "INV-1042",
+    "cycleNumber": 2,
+    "billingDate": "2026-09-01",
+    "periodStart": "2026-09-01",
+    "periodEnd": "2026-09-30",
+    "amount": 330,
+    "status": "INVOICED"
+  },
+  {
+    "id": "SCH-003",
+    "subscriptionId": "SUB-001",
+    "invoiceId": null,
+    "cycleNumber": 3,
+    "billingDate": "2026-10-01",
+    "periodStart": "2026-10-01",
+    "periodEnd": "2026-10-31",
+    "amount": 330,
+    "status": "SCHEDULED"
+  },
+  {
+    "id": "SCH-004",
+    "subscriptionId": "SUB-004",
+    "invoiceId": "INV-1045",
+    "cycleNumber": 1,
+    "billingDate": "2026-07-25",
+    "periodStart": "2026-07-25",
+    "periodEnd": "2026-08-24",
+    "amount": 1800,
+    "status": "OVERDUE"
+  }
+]

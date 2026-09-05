@@ -1,0 +1,38 @@
+[
+  {
+    "id": "OI-1042-1",
+    "orderId": "SO-1042",
+    "productId": "PROD-007",
+    "productName": "Laptop Pro 14",
+    "quantity": 24,
+    "unitPrice": 125000,
+    "totalPrice": 3000000
+  },
+  {
+    "id": "OI-1043-1",
+    "orderId": "SO-1043",
+    "productId": "PROD-002",
+    "productName": "Security Gateway Appliance Pro",
+    "quantity": 5,
+    "unitPrice": 185000,
+    "totalPrice": 925000
+  },
+  {
+    "id": "OI-1044-1",
+    "orderId": "SO-1044",
+    "productId": "PROD-006",
+    "productName": "Fleet Telemetry Edge Sensor Units",
+    "quantity": 50,
+    "unitPrice": 14500,
+    "totalPrice": 725000
+  },
+  {
+    "id": "OI-1045-1",
+    "orderId": "SO-1045",
+    "productId": "PROD-002",
+    "productName": "Security Gateway Appliance Pro",
+    "quantity": 3,
+    "unitPrice": 185000,
+    "totalPrice": 555000
+  }
+]

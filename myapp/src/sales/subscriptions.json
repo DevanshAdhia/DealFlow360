@@ -1,0 +1,46 @@
+[
+  {
+    "id": "SUB-001",
+    "quotationId": "QID-001",
+    "customerId": "CUS-001",
+    "billingCycle": "Annual",
+    "contractDurationMonths": 12,
+    "autoRenew": true,
+    "annualRecurringRevenue": 1600000,
+    "monthlyRecurringRevenue": 133333,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "SUB-002",
+    "quotationId": "QID-002",
+    "customerId": "CUS-002",
+    "billingCycle": "Quarterly",
+    "contractDurationMonths": 24,
+    "autoRenew": true,
+    "annualRecurringRevenue": 1080000,
+    "monthlyRecurringRevenue": 90000,
+    "status": "PENDING"
+  },
+  {
+    "id": "SUB-003",
+    "quotationId": "QID-003",
+    "customerId": "CUS-003",
+    "billingCycle": "Annual",
+    "contractDurationMonths": 36,
+    "autoRenew": true,
+    "annualRecurringRevenue": 2150000,
+    "monthlyRecurringRevenue": 179166,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "SUB-004",
+    "quotationId": "QID-004",
+    "customerId": "CUS-004",
+    "billingCycle": "Monthly",
+    "contractDurationMonths": 12,
+    "autoRenew": false,
+    "annualRecurringRevenue": 0,
+    "monthlyRecurringRevenue": 40000,
+    "status": "DRAFT"
+  }
+]

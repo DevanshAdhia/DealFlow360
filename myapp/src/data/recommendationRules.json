@@ -1,0 +1,38 @@
+[
+  {
+    "id": "REC-001",
+    "ruleType": "UPSELL",
+    "title": "Upgrade to 24/7 Priority SLA",
+    "triggerProductId": "PROD-001",
+    "recommendedProductId": "PROD-004",
+    "reason": "Enterprise SaaS deployment requires 15-min emergency SLA and dedicated TAM.",
+    "priceImpact": "+₹1,40,000 / yr"
+  },
+  {
+    "id": "REC-002",
+    "ruleType": "CROSS_SELL",
+    "title": "Security Gateway Hardware Appliance",
+    "triggerProductId": "PROD-001",
+    "recommendedProductId": "PROD-002",
+    "reason": "Protect hybrid cloud data transmission with hardware crypto acceleration.",
+    "priceImpact": "+₹1,85,000 unit"
+  },
+  {
+    "id": "REC-003",
+    "ruleType": "CROSS_SELL",
+    "title": "Custom ERP Connector & Solutions Pack",
+    "triggerProductId": "PROD-003",
+    "recommendedProductId": "PROD-005",
+    "reason": "Integrate ERP & CPQ sync pipelines seamlessly with 40-hr engineering pack.",
+    "priceImpact": "+₹2,40,000 project"
+  },
+  {
+    "id": "REC-004",
+    "ruleType": "UPSELL",
+    "title": "Multi-Region Data Pipeline Core Cluster",
+    "triggerProductId": "PROD-002",
+    "recommendedProductId": "PROD-003",
+    "reason": "Pair security hardware with high-throughput event streaming cluster.",
+    "priceImpact": "+₹7,50,000 cluster"
+  }
+]

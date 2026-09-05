@@ -1,0 +1,74 @@
+[
+  {
+    "id": "ITEM-1042-1",
+    "invoiceId": "INV-1042",
+    "productId": "PROD-007",
+    "description": "Laptop Pro 14 (Hardware Batch Delivery)",
+    "quantity": 24,
+    "unitPrice": 100,
+    "discountAmount": 0,
+    "taxAmount": 432,
+    "lineTotal": 2400,
+    "billingType": "ONE_TIME"
+  },
+  {
+    "id": "ITEM-1042-2",
+    "invoiceId": "INV-1042",
+    "productId": "PROD-001",
+    "description": "Enterprise Cloud Backup & SLA Support (Monthly)",
+    "quantity": 1,
+    "unitPrice": 330,
+    "discountAmount": 0,
+    "taxAmount": 59.4,
+    "lineTotal": 330,
+    "billingType": "RECURRING"
+  },
+  {
+    "id": "ITEM-1043-1",
+    "invoiceId": "INV-1043",
+    "productId": "PROD-001",
+    "description": "Enterprise Cloud Telemetry Storage (Monthly Cycle)",
+    "quantity": 1,
+    "unitPrice": 48,
+    "discountAmount": 0,
+    "taxAmount": 8.64,
+    "lineTotal": 48,
+    "billingType": "RECURRING"
+  },
+  {
+    "id": "ITEM-1038-1",
+    "invoiceId": "INV-1038",
+    "productId": "PROD-002",
+    "description": "Security Gateway Appliance Pro (Appliance Shipment)",
+    "quantity": 5,
+    "unitPrice": 1950,
+    "discountAmount": 0,
+    "taxAmount": 1755,
+    "lineTotal": 9750,
+    "billingType": "ONE_TIME"
+  },
+  {
+    "id": "ITEM-1044-1",
+    "invoiceId": "INV-1044",
+    "productId": "PROD-006",
+    "description": "Fleet Telemetry Edge Sensor Units (50 Units)",
+    "quantity": 50,
+    "unitPrice": 104,
+    "discountAmount": 0,
+    "taxAmount": 936,
+    "lineTotal": 5200,
+    "billingType": "ONE_TIME"
+  },
+  {
+    "id": "ITEM-1045-1",
+    "invoiceId": "INV-1045",
+    "productId": "PROD-004",
+    "description": "SaaS Telemetry Core Platform License (Monthly)",
+    "quantity": 1,
+    "unitPrice": 1800,
+    "discountAmount": 0,
+    "taxAmount": 324,
+    "lineTotal": 1800,
+    "billingType": "RECURRING"
+  }
+]

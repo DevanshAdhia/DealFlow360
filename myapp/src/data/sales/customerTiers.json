@@ -1,0 +1,41 @@
+[
+  {
+    "id": "TIER-001",
+    "tierCode": "TIER_ENTERPRISE",
+    "name": "Enterprise Platinum",
+    "priceListId": "PL-ENT",
+    "maxRepDiscount": 20,
+    "pricingMultiplier": 0.85,
+    "defaultPaymentTerms": "Net 45",
+    "paymentTermsAllowed": ["Net 15", "Net 30", "Net 45", "Net 60"],
+    "slaLevel": "24/7 Dedicated Priority (15-min SLA)",
+    "badgeColor": "#4F46E5",
+    "badgeBg": "#EEF2FF"
+  },
+  {
+    "id": "TIER-002",
+    "tierCode": "TIER_MIDMARKET",
+    "name": "Mid-Market Silver",
+    "priceListId": "PL-MID",
+    "maxRepDiscount": 12,
+    "pricingMultiplier": 0.92,
+    "defaultPaymentTerms": "Net 30",
+    "paymentTermsAllowed": ["Net 15", "Net 30"],
+    "slaLevel": "Business Hours Priority (1-hour SLA)",
+    "badgeColor": "#0284C7",
+    "badgeBg": "#E0F2FE"
+  },
+  {
+    "id": "TIER-003",
+    "tierCode": "TIER_STANDARD",
+    "name": "Commercial Standard",
+    "priceListId": "PL-STD",
+    "maxRepDiscount": 5,
+    "pricingMultiplier": 1.00,
+    "defaultPaymentTerms": "Net 30",
+    "paymentTermsAllowed": ["Immediate", "Net 15", "Net 30"],
+    "slaLevel": "Standard Support SLA (24-hour SLA)",
+    "badgeColor": "#64748B",
+    "badgeBg": "#F1F5F9"
+  }
+]
