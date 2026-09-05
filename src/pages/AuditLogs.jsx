@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { getAuditLogs } from '../services/storageService';
 import { DataTable } from '../components/common/UI';
 
 function AuditLogs() {
-  const initialData = getAuditLogs();
-  const [data] = useState(initialData);
+  const [data] = useState([]);
   const [search, setSearch] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [filterAction, setFilterAction] = useState('');

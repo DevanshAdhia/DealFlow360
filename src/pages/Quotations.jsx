@@ -1,51 +1,74 @@
-import React, { useState } from 'react';
-import { getQuotations, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 const STATUSES = ['Draft', 'Pending', 'Negotiating', 'Approved', 'Rejected', 'Confirmed'];
 
 function Quotations() {
-  const [data, setData] = useState(() => getQuotations());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterRisk, setFilterRisk] = useState('');
   const [viewItem, setViewItem] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getQuotations());
+  const fetchQuotations = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getQuotations();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load quotations from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuotations();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus, filterRisk]);
   const filtered = data.filter(q => {
-    const s = !search || q.quoteId?.toLowerCase().includes(search.toLowerCase()) || q.customer?.toLowerCase().includes(search.toLowerCase());
-    return s && (!filterStatus || q.status === filterStatus) && (!filterRisk || q.risk === filterRisk);
+    const qNum = q.quotation_number || q.quote_number || q.quoteId || '';
+    const custName = q.customer_name || q.customer || '';
+    const s = !search || qNum.toLowerCase().includes(search.toLowerCase()) || custName.toLowerCase().includes(search.toLowerCase());
+    return s && (!filterStatus || q.status === filterStatus) && (!filterRisk || q.risk_level === filterRisk || q.risk === filterRisk);
   });
 
-  const handleStatusChange = (q, ns) => {
-    saveEntity('df_quotations', { ...q, status: ns }, false);
-    addAuditLog(null, `${ns} Quotation`, 'Quotation', `Quote ${q.quoteId} → ${ns}`);
-    toast.success(`Quote ${q.quoteId} ${ns.toLowerCase()}.`);
-    refresh();
+  const handleStatusChange = async (q, ns) => {
+    try {
+      if (ns === 'Approved') {
+        await api.submitQuotation(q.id);
+      }
+      toast.success(`Quote status updated to ${ns.toLowerCase()}.`);
+      await fetchQuotations();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update quotation status.');
+    }
   };
 
   const handleDelete = () => {
-    const q = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_quotations', deleteConfirmId);
-    addAuditLog(null, 'Deleted Quotation', 'Quotation', `Deleted ${q?.quoteId}`);
-    toast.info('Quotation deleted.'); setDeleteConfirmId(null); refresh();
+    toast.info('Delete quotation operation restricted by backend policies.');
+    setDeleteConfirmId(null);
   };
 
   const totalCount = data.length;
-  const pendingCount = data.filter(q => q.status === 'Pending').length;
-  const approvedCount = data.filter(q => q.status === 'Approved' || q.status === 'Confirmed').length;
-  const highRiskCount = data.filter(q => q.risk === 'High' || q.risk === 'Critical').length;
-  const totalValue = data.reduce((s, q) => s + Number(q.amount || 0), 0);
+  const pendingCount = data.filter(q => q.status === 'Pending' || q.status === 'SUBMITTED').length;
+  const approvedCount = data.filter(q => q.status === 'Approved' || q.status === 'APPROVED' || q.status === 'Confirmed' || q.status === 'SENT').length;
+  const totalValue = data.reduce((s, q) => s + Number(q.total_amount || q.amount || 0), 0);
 
   const columns = [
-    { Header: 'Quote ID', accessor: 'quoteId', sortable: true },
-    { Header: 'Customer', accessor: 'customer', sortable: true },
-    { Header: 'Amount', accessor: 'amount', sortable: true, Cell: row => `₹${Number(row.amount || 0).toLocaleString('en-IN')}` },
-    { Header: 'Discount', accessor: 'discount', sortable: true, Cell: row => `${row.discount || 0}%` },
-    { Header: 'Risk', accessor: 'risk', sortable: true, Cell: row => <Badge>{row.risk || 'Low'}</Badge> },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => handleStatusChange(row, s)}>{row.status}</Badge> },
+    { Header: 'Quote Number', accessor: 'quotation_number', sortable: true, Cell: row => row.quotation_number || row.quote_number || row.quoteId || row.id },
+    { Header: 'Customer', accessor: 'customer_name', sortable: true, Cell: row => row.customer_name || row.customer || 'N/A' },
+    { Header: 'Amount', accessor: 'total_amount', sortable: true, Cell: row => `₹${Number(row.total_amount ?? row.amount ?? 0).toLocaleString('en-IN')}` },
+    { Header: 'Discount', accessor: 'discount_percent', sortable: true, Cell: row => `${row.discount_percent ?? row.discount_percentage ?? row.discount ?? 0}%` },
+    { Header: 'Risk', accessor: 'risk_level', sortable: true, Cell: row => <Badge>{row.risk_level || row.risk || 'Low'}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || 'DRAFT'}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         <button onClick={() => setViewItem(row)} className="btn-table-action edit">View</button>
@@ -101,7 +124,7 @@ function Quotations() {
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span>All Quotations ({filtered.length})</span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search quote ID or customer…" className="form-input" style={{ width: '220px', height: '32px' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search quote number or customer…" className="form-input" style={{ width: '220px', height: '32px' }} />
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
               <option value="">All Statuses</option>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -111,17 +134,40 @@ function Quotations() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No quotations found." />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading quotations from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No quotations found." currentPage={tablePage} onPageChange={setTablePage} />
+        )}
       </div>
 
-      <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Quote Detail — ${viewItem?.quoteId}`}>
+      <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Quote Detail — ${viewItem?.quotation_number || viewItem?.quote_number || viewItem?.id}`}>
         {viewItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {[['Customer', viewItem.customer], ['Sales Rep', viewItem.rep], ['Amount', `₹${Number(viewItem.amount || 0).toLocaleString('en-IN')}`], ['Discount', `${viewItem.discount || 0}%`], ['Margin', `${viewItem.margin || 0}%`], ['Risk', viewItem.risk], ['Status', viewItem.status], ['Created', viewItem.created], ['Expiry', viewItem.expiry]].map(([label, val]) => (
-                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val}</div></div>
+              {[
+                ['Quotation Number', viewItem.quotation_number || viewItem.quote_number || viewItem.id],
+                ['Customer', viewItem.customer_name || viewItem.customer || 'N/A'],
+                ['Sales Rep', viewItem.sales_rep_name || viewItem.rep || 'N/A'],
+                ['Amount', `₹${Number(viewItem.total_amount ?? viewItem.amount ?? 0).toLocaleString('en-IN')}`],
+                ['Discount', `${viewItem.discount_percent ?? viewItem.discount ?? 0}% (₹${Number(viewItem.discount_amount || 0).toLocaleString('en-IN')})`],
+                ['Margin', `${viewItem.margin_percent ?? viewItem.margin ?? 0}% (₹${Number(viewItem.margin_amount || 0).toLocaleString('en-IN')})`],
+                ['Risk Level', `${viewItem.risk_level || viewItem.risk || 'Low'} (Score: ${viewItem.blended_risk_score ?? '0'})`],
+                ['Status', viewItem.status],
+                ['Created Date', viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('en-IN') : 'N/A'],
+                ['Expiry Date', viewItem.valid_until || 'N/A']
+              ].map(([label, val]) => (
+                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val || 'N/A'}</div></div>
               ))}
             </div>
+
+            {viewItem.notes && (
+              <div style={{ background: '#f9fafb', padding: '10px 12px', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#4b5563', marginBottom: '2px' }}>NOTES / PROJECT DETAILS</div>
+                <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>{viewItem.notes}</div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
               {viewItem.status === 'Pending' && <><button onClick={() => { handleStatusChange(viewItem, 'Approved'); setViewItem(null); }} className="btn btn-primary">Approve</button><button onClick={() => { handleStatusChange(viewItem, 'Rejected'); setViewItem(null); }} className="btn btn-danger">Reject</button></>}
               {viewItem.status === 'Approved' && <button onClick={() => { handleStatusChange(viewItem, 'Confirmed'); setViewItem(null); }} className="btn btn-primary">Confirm Order</button>}

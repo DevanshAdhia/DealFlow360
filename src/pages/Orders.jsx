@@ -1,46 +1,70 @@
-import React, { useState } from 'react';
-import { getOrders, saveEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 const ORDER_STATUSES = ['Created', 'Processing', 'Partially Fulfilled', 'Fulfilled', 'Cancelled'];
 
 function Orders() {
-  const [data, setData] = useState(() => getOrders());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPayment, setFilterPayment] = useState('');
   const [viewItem, setViewItem] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getOrders());
+  const fetchOrders = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getOrders();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load orders from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus, filterPayment]);
+
   const filtered = data.filter(o => {
-    const s = !search || o.orderId?.toLowerCase().includes(search.toLowerCase()) || o.customer?.toLowerCase().includes(search.toLowerCase());
+    const s = !search || (o.orderId || o.order_number)?.toLowerCase().includes(search.toLowerCase()) || (o.customer || o.customer_name)?.toLowerCase().includes(search.toLowerCase());
     return s && (!filterStatus || o.status === filterStatus) && (!filterPayment || o.payment === filterPayment);
   });
 
-  const handleStatusChange = (order, ns) => {
-    saveEntity('df_orders', { ...order, status: ns }, false);
-    addAuditLog(null, 'Updated Order Status', 'Order', `Order ${order.orderId} → ${ns}`);
-    toast.success(`Order ${order.orderId} updated.`);
-    refresh();
+  const handleStatusChange = async (order, ns) => {
+    try {
+      const backendStatus = ns.toUpperCase().replace(' ', '_');
+      await api.updateOrder(order.id, { status: backendStatus });
+      toast.success(`Order status updated to ${ns}.`);
+      await fetchOrders();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update order status.');
+    }
   };
 
   const totalCount = data.length;
-  const processingCount = data.filter(o => o.status === 'Processing' || o.status === 'Created').length;
-  const fulfilledCount = data.filter(o => o.status === 'Fulfilled').length;
-  const totalRevenue = data.filter(o => o.status !== 'Cancelled').reduce((s, o) => s + Number(o.amount || 0), 0);
+  const processingCount = data.filter(o => o.status === 'Processing' || o.status === 'Created' || o.status === 'PENDING' || o.status === 'IN_FULFILLMENT').length;
+  const fulfilledCount = data.filter(o => o.status === 'Fulfilled' || o.status === 'FULFILLED' || o.status === 'COMPLETED').length;
+  const totalRevenue = data.filter(o => o.status !== 'Cancelled' && o.status !== 'CANCELLED').reduce((s, o) => s + Number(o.total_amount || o.amount || 0), 0);
 
   const columns = [
-    { Header: 'Order ID', accessor: 'orderId', sortable: true },
-    { Header: 'Customer', accessor: 'customer', sortable: true },
-    { Header: 'Amount', accessor: 'amount', sortable: true, Cell: row => `₹${Number(row.amount || 0).toLocaleString('en-IN')}` },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => handleStatusChange(row, s)}>{row.status}</Badge> },
-    { Header: 'Payment', accessor: 'payment', sortable: true, Cell: row => <Badge>{row.payment}</Badge> },
+    { Header: 'Order Number', accessor: 'order_number', sortable: true, Cell: row => row.order_number || row.orderId || row.id },
+    { Header: 'Customer', accessor: 'customer_name', sortable: true, Cell: row => row.customer_name || row.customer || 'N/A' },
+    { Header: 'Amount', accessor: 'total_amount', sortable: true, Cell: row => `₹${Number(row.total_amount ?? row.amount ?? 0).toLocaleString('en-IN')}` },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || 'Created'}</Badge> },
+    { Header: 'Payment', accessor: 'payment', sortable: true, Cell: row => <Badge>{row.payment || (row.status === 'FULFILLED' || row.status === 'COMPLETED' ? 'Paid' : 'Unpaid')}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={() => setViewItem(row)} className="btn-table-action edit">View</button>
-        {row.status !== 'Fulfilled' && row.status !== 'Cancelled' && <button onClick={() => handleStatusChange(row, 'Fulfilled')} className="btn-table-action success">Fulfill</button>}
-        {row.status !== 'Cancelled' && <button onClick={() => handleStatusChange(row, 'Cancelled')} className="btn-table-action danger">Cancel</button>}
+        {row.status !== 'FULFILLED' && row.status !== 'COMPLETED' && row.status !== 'CANCELLED' && <button onClick={() => handleStatusChange(row, 'Fulfilled')} className="btn-table-action success">Fulfill</button>}
+        {row.status !== 'CANCELLED' && <button onClick={() => handleStatusChange(row, 'Cancelled')} className="btn-table-action danger">Cancel</button>}
       </div>
     }
   ];
@@ -99,15 +123,19 @@ function Orders() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No orders found." />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading orders from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No orders found." currentPage={tablePage} onPageChange={setTablePage} />
+        )}
       </div>
 
-      <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Order — ${viewItem?.orderId}`}>
+      <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Order — ${viewItem?.orderId || viewItem?.order_number || viewItem?.id}`}>
         {viewItem && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {[['Order ID', viewItem.orderId], ['Customer', viewItem.customer], ['Quote ID', viewItem.quoteId], ['Amount', `₹${Number(viewItem.amount || 0).toLocaleString('en-IN')}`], ['Status', viewItem.status], ['Payment', viewItem.payment], ['Created', viewItem.created]].map(([label, val]) => (
-                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val}</div></div>
+              {[['Order ID', viewItem.orderId || viewItem.order_number], ['Customer', viewItem.customer || viewItem.customer_name], ['Quote ID', viewItem.quoteId || viewItem.quote_number], ['Amount', `₹${Number(viewItem.amount || viewItem.total_amount || 0).toLocaleString('en-IN')}`], ['Status', viewItem.status], ['Payment', viewItem.payment || 'Unpaid'], ['Created', viewItem.created || viewItem.created_at]].map(([label, val]) => (
+                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val || 'N/A'}</div></div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>

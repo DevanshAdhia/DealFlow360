@@ -7,4 +7,7 @@ from apps.login.serializers.login_serializer import (  # noqa: F401
     TokenRefreshRequestSerializer,
     TokenRefreshResponseSerializer,
     LogoutRequestSerializer,
+    ForgotPasswordRequestSerializer,
+    VerifyOTPSerializer,
+    ResetPasswordSerializer,
 )

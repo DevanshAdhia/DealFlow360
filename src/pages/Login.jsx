@@ -1,38 +1,49 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import { api } from '../services/apiService';
 import { setSession } from '../services/storageService';
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@dealflow360.com');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('Password123!');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error('Please enter both email and password');
+    if (!username || !password) {
+      toast.error('Please enter both username/email and password');
       return;
     }
 
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      if (email === 'admin@dealflow360.com' && password === 'admin123') {
-        const user = {
-          name: 'Super Admin',
-          email: 'admin@dealflow360.com',
-          role: 'Admin'
-        };
-        setSession(user);
-        onLogin(user);
+    try {
+      const res = await api.login({ username: username.trim(), password });
+      if (res && res.access) {
+        localStorage.setItem('access_token', res.access);
+        if (res.refresh) {
+          localStorage.setItem('refresh_token', res.refresh);
+        }
+
+        const userObj = res.user ? {
+          id: res.user.id,
+          name: res.user.name || res.user.username,
+          email: res.user.email,
+          role: res.user.role || 'Admin'
+        } : { name: username, email: username, role: 'Admin' };
+
+        setSession(userObj);
+        onLogin(userObj);
         toast.success('Login successful');
       } else {
-        toast.error('Invalid credentials');
-        setLoading(false);
+        throw new Error('Invalid response from server.');
       }
-    }, 1000);
+    } catch (err) {
+      toast.error(err.message || 'Login failed. Invalid username or password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,13 +56,13 @@ function Login({ onLogin }) {
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Username or Email</label>
             <input 
-              type="email" 
+              type="text" 
               className="form-input" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@dealflow360.com"
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin"
             />
           </div>
           <div className="form-group">
@@ -61,7 +72,7 @@ function Login({ onLogin }) {
               className="form-input" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="admin123"
+              placeholder="Password123!"
             />
           </div>
           <button 

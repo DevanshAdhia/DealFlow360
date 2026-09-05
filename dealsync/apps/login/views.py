@@ -3,9 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 from drf_spectacular.utils import extend_schema
 
-from apps.login.models import Login
+from apps.login.models import Login, PasswordResetOTP
 from apps.login.serializers import (
     LoginSerializer,
     LoginCreateSerializer,
@@ -15,6 +18,9 @@ from apps.login.serializers import (
     TokenRefreshRequestSerializer,
     TokenRefreshResponseSerializer,
     LogoutRequestSerializer,
+    ForgotPasswordRequestSerializer,
+    VerifyOTPSerializer,
+    ResetPasswordSerializer,
 )
 from apps.signup.serializers import UserDetailSerializer
 from apps.login.services import LoginService
@@ -167,3 +173,119 @@ class LoginViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.deactivate()
         return Response(LoginSerializer(instance).data)
+
+    # ── Forgot Password ────────────────────────────────────────────────────────
+
+    @extend_schema(
+        summary="Request Password Reset OTP",
+        description="Sends a 6-digit OTP to the registered email address. OTP expires in 10 minutes.",
+        request=ForgotPasswordRequestSerializer,
+        responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}},
+    )
+    @action(detail=False, methods=["post"], url_path="forgot-password", permission_classes=[AllowAny])
+    def forgot_password(self, request: Request) -> Response:
+        serializer = ForgotPasswordRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+
+        # Always return the same response to prevent user enumeration
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+        except User.DoesNotExist:
+            return Response(
+                {"message": "If that email is registered, you will receive an OTP shortly."},
+                status=status.HTTP_200_OK,
+            )
+
+        otp = PasswordResetOTP.generate_for_user(user)
+
+        # Send email
+        try:
+            send_mail(
+                subject="DealFlow360 — Your Password Reset OTP",
+                message=(
+                    f"Hi {user.get_full_name() or user.username},\n\n"
+                    f"Your 6-digit password reset OTP is:\n\n"
+                    f"    {otp}\n\n"
+                    f"This OTP expires in 10 minutes. Do not share it with anyone.\n\n"
+                    f"If you did not request a password reset, please ignore this email.\n\n"
+                    f"— DealFlow360 Security Team"
+                ),
+                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "no-reply@dealflow360.com"),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception as exc:  # pragma: no cover
+            return Response(
+                {"error": {"message": "Failed to send OTP email. Please try again later."}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(
+            {"message": "If that email is registered, you will receive an OTP shortly."},
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        summary="Verify Password Reset OTP",
+        description="Validates the 6-digit OTP sent to the user's email. Returns success if OTP is valid and not expired.",
+        request=VerifyOTPSerializer,
+        responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}},
+    )
+    @action(detail=False, methods=["post"], url_path="verify-otp", permission_classes=[AllowAny])
+    def verify_otp(self, request: Request) -> Response:
+        serializer = VerifyOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+        otp = serializer.validated_data["otp"]
+
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+        except User.DoesNotExist:
+            return Response(
+                {"error": {"message": "Invalid OTP or email."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not PasswordResetOTP.verify(user, otp):
+            return Response(
+                {"error": {"message": "Invalid or expired OTP. Please request a new one."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"message": "OTP verified. You may now reset your password."}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Reset Password with OTP",
+        description="Resets the user's password after successful OTP verification. The OTP is consumed and cannot be reused.",
+        request=ResetPasswordSerializer,
+        responses={200: {"type": "object", "properties": {"message": {"type": "string"}}}},
+    )
+    @action(detail=False, methods=["post"], url_path="reset-password", permission_classes=[AllowAny])
+    def reset_password(self, request: Request) -> Response:
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].lower().strip()
+        otp = serializer.validated_data["otp"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+        except User.DoesNotExist:
+            return Response(
+                {"error": {"message": "Invalid OTP or email."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not PasswordResetOTP.verify(user, otp):
+            return Response(
+                {"error": {"message": "Invalid or expired OTP. Please request a new one."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Consume OTP & set new password
+        PasswordResetOTP.mark_used(user, otp)
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response({"message": "Password reset successfully. You may now log in."}, status=status.HTTP_200_OK)

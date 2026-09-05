@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getApprovalRules, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
@@ -9,7 +9,7 @@ const APPROVAL_ROLES = ['Sales Manager', 'Finance', 'Admin'];
 const emptyForm = { name: '', condition: 'Discount', operator: 'Greater Than', value: 15, approvalRole: 'Sales Manager', priority: 1, status: 'Active' };
 
 function ApprovalRules() {
-  const [data, setData] = useState(() => getApprovalRules());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,57 +18,109 @@ function ApprovalRules() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getApprovalRules());
+  const fetchApprovalRules = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getApprovalRules();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load approval rules from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApprovalRules();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
   const filtered = data.filter(r => {
     const s = !search || r.name?.toLowerCase().includes(search.toLowerCase());
     return s && (!filterStatus || r.status === filterStatus);
   });
 
   const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Required'; return e; };
-  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+  const openModal = (item = null) => { 
+    setErrors({}); 
+    setEditingItem(item); 
+    setFormData(item ? { 
+      ...item, 
+      status: item.status || (item.is_active ? 'Active' : 'Inactive') 
+    } : { ...emptyForm }); 
+    setIsModalOpen(true); 
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_approval_rules', { ...formData, value: Number(formData.value), priority: Number(formData.priority) }, isNew);
-      addAuditLog(null, isNew ? 'Created Approval Rule' : 'Updated Approval Rule', 'Approval Rule', formData.name);
-      toast.success(isNew ? 'Rule created!' : 'Rule updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      const payload = {
+        name: formData.name,
+        min_risk_score: Number(formData.min_risk_score || formData.minRiskScore || 0),
+        is_active: formData.status === 'Active'
+      };
+
+      if (editingItem) {
+        await api.updateApprovalRule(editingItem.id, payload);
+      } else {
+        await api.createApprovalRule(payload);
+      }
+      toast.success(editingItem ? 'Approval rule updated in database!' : 'Approval rule created in database!');
+      setIsModalOpen(false);
+      await fetchApprovalRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save approval rule in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const r = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_approval_rules', deleteConfirmId);
-    addAuditLog(null, 'Deleted Approval Rule', 'Approval Rule', r?.name);
-    toast.info('Rule deleted.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteApprovalRule(deleteConfirmId);
+      toast.success('Approval rule deleted successfully!');
+      await fetchApprovalRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete approval rule.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
-  const handleToggle = (r) => {
-    const ns = r.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_approval_rules', { ...r, status: ns }, false);
-    toast.info(`Rule ${ns.toLowerCase()}.`); refresh();
+  const handleToggle = async (r) => {
+    try {
+      const isCurrentlyActive = r.status === 'Active' || r.is_active;
+      await api.updateApprovalRule(r.id, { is_active: !isCurrentlyActive });
+      toast.success(`Approval rule ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
+      await fetchApprovalRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update approval rule status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(r => r.status === 'Active').length;
+  const activeCount = data.filter(r => r.status === 'Active' || r.is_active).length;
 
   const columns = [
     { Header: 'Rule Name', accessor: 'name', sortable: true },
-    { Header: 'Condition', accessor: 'condition', sortable: true },
-    { Header: 'Threshold', accessor: 'value', sortable: true, Cell: row => `${row.operator} ${row.value}${row.condition === 'Discount' || row.condition === 'Margin' ? '%' : ''}` },
-    { Header: 'Approval Role', accessor: 'approvalRole', sortable: true },
-    { Header: 'Priority', accessor: 'priority', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_approval_rules', { ...row, status: s }, false); toast.success(`Approval rule status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Condition', accessor: 'condition', sortable: true, Cell: row => row.condition || `Risk Score Range: ${row.min_risk_score ?? 0} - ${row.max_risk_score ?? 100}` },
+    { Header: 'Threshold', accessor: 'value', sortable: true, Cell: row => row.value ? `${row.operator || ''} ${row.value}` : `Score ${row.min_risk_score ?? 0}–${row.max_risk_score ?? 100}` },
+    { Header: 'Approval Role', accessor: 'approvalRole', sortable: true, Cell: row => row.approvalRole || row.approver_role || 'Sales Manager' },
+    { Header: 'Priority', accessor: 'priority', sortable: true, Cell: row => row.priority || `P${row.id}` },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-        <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+        <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
         <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
       </div>
     }
@@ -102,13 +154,6 @@ function ApprovalRules() {
           <div className="metric-value text-success">{activeCount}</div>
           <div className="metric-subtitle">Currently enforced</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">INACTIVE RULES</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-          </div>
-          <div className="metric-value text-warning">{totalCount - activeCount}</div>
-          <div className="metric-subtitle">Disabled workflows</div>
-        </div>
       </div>
 
       <div className="card">
@@ -121,8 +166,12 @@ function ApprovalRules() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No approval rules configured."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading approval rules from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No approval rules configured."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Approval Rule' : 'Create Approval Rule'}>

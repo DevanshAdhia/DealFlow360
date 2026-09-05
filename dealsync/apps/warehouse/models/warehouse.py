@@ -48,6 +48,7 @@ class Order(models.Model):
     STATUS_CHOICES = (
         ("PENDING", "Pending"),
         ("IN_FULFILLMENT", "In Fulfillment"),
+        ("FULFILLED", "Fulfilled"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
     )

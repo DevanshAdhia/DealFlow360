@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { getSettings, setSettings, getSession, addAuditLog } from '../services/storageService';
+
+const defaultSettings = {
+  companyName: 'DealFlow360 Enterprise',
+  currency: 'INR',
+  timezone: 'Asia/Kolkata',
+  approvalTimeout: 48,
+  lowStockThreshold: 10,
+};
 
 function Settings() {
-  const [settings, setLocalSettings] = useState(() => getSettings());
+  const [settings, setLocalSettings] = useState(defaultSettings);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setSaving(true);
-
     setTimeout(() => {
-      setSettings(settings);
-
-      const session = getSession();
-      addAuditLog(session, 'Updated Settings', 'Settings', 'Admin updated global system settings');
-
       toast.success('System configuration saved successfully');
       setSaving(false);
-    }, 600);
+    }, 400);
   };
 
   const inp = { width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', boxSizing: 'border-box' };

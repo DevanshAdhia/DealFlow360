@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { getCategories, getProducts, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 const emptyForm = { name: '', description: '', status: 'Active' };
 
 function Categories() {
-  const [data, setData] = useState(() => getCategories());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -14,58 +14,104 @@ function Categories() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getCategories());
+  const fetchCategories = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getCategories();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load categories from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
   const filtered = data.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
 
   const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Required'; return e; };
 
-  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+  const openModal = (item = null) => { 
+    setErrors({}); 
+    setEditingItem(item); 
+    setFormData(item ? { 
+      name: item.name || '', 
+      description: item.description || '', 
+      status: item.status || (item.is_active ? 'Active' : 'Inactive') 
+    } : { ...emptyForm }); 
+    setIsModalOpen(true); 
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_categories', formData, isNew);
-      addAuditLog(null, isNew ? 'Created Category' : 'Updated Category', 'Category', `${formData.name}`);
-      toast.success(isNew ? 'Category created!' : 'Category updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
-  };
-
-  const handleDelete = () => {
-    const cat = data.find(x => x.id === deleteConfirmId);
-    const products = getProducts();
-    if (products.some(p => p.category === cat?.name)) {
-      toast.error(`Cannot delete "${cat?.name}" — products are assigned to it.`);
-      setDeleteConfirmId(null); return;
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description || '',
+        is_active: formData.status === 'Active'
+      };
+      if (editingItem) {
+        await api.updateCategory(editingItem.id, payload);
+      } else {
+        await api.createCategory(payload);
+      }
+      toast.success(editingItem ? 'Category updated!' : 'Category created!');
+      setIsModalOpen(false);
+      await fetchCategories();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save category.');
+    } finally {
+      setLoading(false);
     }
-    deleteEntity('df_categories', deleteConfirmId);
-    addAuditLog(null, 'Deleted Category', 'Category', `Deleted: ${cat?.name}`);
-    toast.info('Category deleted.'); setDeleteConfirmId(null); refresh();
   };
 
-  const handleToggle = (c) => {
-    const ns = c.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_categories', { ...c, status: ns }, false);
-    toast.success(`Category ${ns.toLowerCase()}.`); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteCategory(deleteConfirmId);
+      toast.success('Category deleted successfully!');
+      await fetchCategories();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete category.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleToggle = async (c) => {
+    try {
+      const isCurrentlyActive = c.status === 'Active' || c.is_active;
+      await api.updateCategory(c.id, { is_active: !isCurrentlyActive });
+      toast.success(`Category ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
+      await fetchCategories();
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle category status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(c => c.status === 'Active').length;
-  const productCount = getProducts().length;
+  const activeCount = data.filter(c => c.status === 'Active' || c.is_active).length;
 
   const columns = [
     { Header: 'Category Name', accessor: 'name', sortable: true },
     { Header: 'Description', accessor: 'description', sortable: false },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_categories', { ...row, status: s }, false); toast.success(`Category status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-        <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+        <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
         <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
       </div>
     }
@@ -99,13 +145,6 @@ function Categories() {
           <div className="metric-value text-success">{activeCount}</div>
           <div className="metric-subtitle">Available for assignment</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">TOTAL PRODUCTS</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-          </div>
-          <div className="metric-value text-warning">{productCount}</div>
-          <div className="metric-subtitle">Across all categories</div>
-        </div>
       </div>
 
       <div className="card">
@@ -113,8 +152,12 @@ function Categories() {
           <span>All Categories ({filtered.length})</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ width: '200px', height: '32px' }} />
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No categories found."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add Category</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading categories from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No categories found."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add Category</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Category' : 'Create Category'}>
@@ -128,7 +171,7 @@ function Categories() {
           </div>
         </form>
       </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Category" message="Delete this category? Will fail if products are assigned to it." />
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Category" message="Delete this category?" />
     </div>
   );
 }

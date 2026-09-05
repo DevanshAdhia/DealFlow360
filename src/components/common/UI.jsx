@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Common Button Component
 export const Button = ({ children, variant = 'primary', className = '', ...props }) => (
@@ -94,10 +94,15 @@ export const ConfirmDialog = ({ isOpen, onClose, onConfirm, title, message }) =>
 };
 
 // Premium Data Table Component with Sorting & Pagination (useState-only, no useMemo)
-export const DataTable = ({ columns, data, loading, emptyMessage = 'No records found.', emptyAction }) => {
+export const DataTable = ({ columns, data, loading, emptyMessage = 'No records found.', emptyAction, currentPage: controlledPage, onPageChange }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [internalPage, setInternalPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Support both controlled (parent manages page) and uncontrolled (internal) pagination
+  const isControlled = controlledPage !== undefined && onPageChange !== undefined;
+  const currentPage = isControlled ? controlledPage : internalPage;
+  const setCurrentPage = isControlled ? onPageChange : setInternalPage;
 
   // Sorting Logic using inline sort (no useMemo)
   let sortedData = [...data];
@@ -125,6 +130,46 @@ export const DataTable = ({ columns, data, loading, emptyMessage = 'No records f
     }
     setSortConfig({ key, direction });
     setCurrentPage(1);
+  };
+
+  // Clamp currentPage if totalPages shrinks below it (only in uncontrolled mode)
+  useEffect(() => {
+    if (!isControlled && currentPage > totalPages && totalPages > 0) {
+      setInternalPage(totalPages);
+    }
+  }, [data.length, totalPages, currentPage, isControlled]);
+
+  const getPageNumbers = () => {
+    const maxButtons = 7;
+    if (totalPages <= maxButtons) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const pages = [];
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (currentPage <= 3) {
+      endPage = 5;
+    } else if (currentPage >= totalPages - 2) {
+      startPage = totalPages - 4;
+    }
+
+    if (startPage > 1) {
+      pages.push(1);
+      if (startPage > 2) pages.push('...');
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pages.push('...');
+      pages.push(totalPages);
+    }
+
+    return pages;
   };
 
   if (loading) {
@@ -182,19 +227,25 @@ export const DataTable = ({ columns, data, loading, emptyMessage = 'No records f
           <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, data.length)} of {data.length} results
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <Button variant="secondary" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={{ padding: '0.25rem 0.75rem' }}>Prev</Button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map(page => (
-              <Button 
-                key={page} 
-                variant={currentPage === page ? 'primary' : 'secondary'} 
-                onClick={() => setCurrentPage(page)}
-                style={{ padding: '0.25rem 0.75rem' }}
-              >
-                {page}
-              </Button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+            <Button variant="secondary" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} style={{ padding: '0.25rem 0.75rem' }}>Prev</Button>
+            {getPageNumbers().map((page, idx) => (
+              typeof page === 'number' ? (
+                <Button 
+                  key={page} 
+                  variant={currentPage === page ? 'primary' : 'secondary'} 
+                  onClick={() => setCurrentPage(page)}
+                  style={{ padding: '0.25rem 0.75rem', minWidth: '34px' }}
+                >
+                  {page}
+                </Button>
+              ) : (
+                <span key={`ellipsis-${idx}`} style={{ padding: '0.25rem 0.5rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
+                  ...
+                </span>
+              )
             ))}
-            <Button variant="secondary" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={{ padding: '0.25rem 0.75rem' }}>Next</Button>
+            <Button variant="secondary" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} style={{ padding: '0.25rem 0.75rem' }}>Next</Button>
           </div>
         </div>
       )}

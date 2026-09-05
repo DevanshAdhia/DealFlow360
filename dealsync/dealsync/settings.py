@@ -174,8 +174,9 @@ CELERY_TIMEZONE = "UTC"
 
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:3000"],
+    default=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"],
 )
+CORS_ALLOW_CREDENTIALS = True
 
 LOGGING = {
     "version": 1,
@@ -213,3 +214,14 @@ LOGGING = {
         },
     },
 }
+
+# ── Email Configuration ────────────────────────────────────────────────────────
+# In development the console backend prints the OTP to the runserver terminal.
+# For production, switch to smtp and set EMAIL_HOST / EMAIL_HOST_USER / etc. in .env
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@dealflow360.com")

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { getNotifications } from '../../services/storageService';
 
 // Reusable SVG Icons
 const Icons = {
@@ -28,7 +27,7 @@ function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(() => getNotifications().filter(n => n.status === 'Unread').length);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isRulesPath = location.pathname.includes('/discount-rules') || location.pathname.includes('/approval-rules');
   const [isRulesOpen, setIsRulesOpen] = useState(isRulesPath);

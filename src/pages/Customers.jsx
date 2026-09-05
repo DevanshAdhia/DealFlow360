@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getCustomers, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
@@ -9,7 +9,7 @@ const PAYMENT_TERMS = ['Net 15', 'Net 30', 'Net 45', 'Net 60', 'Net 90'];
 const emptyForm = { name: '', email: '', phone: '', industry: 'Technology', tier: 'Standard', creditLimit: '', paymentTerms: 'Net 30', status: 'Active' };
 
 function Customers() {
-  const [data, setData] = useState(() => getCustomers());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterTier, setFilterTier] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -19,9 +19,27 @@ function Customers() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getCustomers());
+  const fetchCustomers = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getCustomers();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load customers from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterTier, filterStatus]);
   const filtered = data.filter(c => {
     const s = !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase());
     return s && (!filterTier || c.tier === filterTier) && (!filterStatus || c.status === filterStatus);
@@ -34,37 +52,71 @@ function Customers() {
     return e;
   };
 
-  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+  const openModal = (item = null) => { 
+    setErrors({}); 
+    setEditingItem(item); 
+    setFormData(item ? { 
+      ...item, 
+      status: item.status || (item.is_active ? 'Active' : 'Inactive') 
+    } : { ...emptyForm }); 
+    setIsModalOpen(true); 
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_customers', formData, isNew);
-      addAuditLog(null, isNew ? 'Created Customer' : 'Updated Customer', 'Customer', `${isNew ? 'Created' : 'Updated'}: ${formData.name}`);
-      toast.success(isNew ? 'Customer created!' : 'Customer updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || '',
+        is_active: formData.status === 'Active'
+      };
+
+      if (editingItem) {
+        await api.updateCustomer(editingItem.id, payload);
+      } else {
+        await api.createCustomer(payload);
+      }
+      toast.success(editingItem ? 'Customer updated successfully!' : 'Customer created successfully!');
+      setIsModalOpen(false);
+      await fetchCustomers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save customer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const c = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_customers', deleteConfirmId);
-    addAuditLog(null, 'Deleted Customer', 'Customer', `Deleted: ${c?.name}`);
-    toast.info('Customer removed.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteCustomer(deleteConfirmId);
+      toast.success('Customer deleted successfully!');
+      await fetchCustomers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete customer.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
-  const handleToggle = (c) => {
-    const ns = c.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_customers', { ...c, status: ns }, false);
-    toast.success(`Customer ${ns.toLowerCase()}.`); refresh();
+  const handleToggle = async (c) => {
+    try {
+      const isCurrentlyActive = c.status === 'Active' || c.is_active;
+      await api.updateCustomer(c.id, { is_active: !isCurrentlyActive });
+      toast.success(`Customer ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
+      await fetchCustomers();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update customer status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(c => c.status === 'Active').length;
+  const activeCount = data.filter(c => c.status === 'Active' || c.is_active).length;
   const enterpriseCount = data.filter(c => c.tier === 'Enterprise' || c.tier === 'Platinum').length;
   const newThisMonth = data.filter(c => c.tier === 'Gold').length;
 
@@ -72,14 +124,14 @@ function Customers() {
     { Header: 'Company', accessor: 'name', sortable: true },
     { Header: 'Email', accessor: 'email', sortable: true },
     { Header: 'Industry', accessor: 'industry', sortable: true },
-    { Header: 'Tier', accessor: 'tier', sortable: true, Cell: row => <Badge>{row.tier}</Badge> },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_customers', { ...row, status: s }, false); toast.success(`Customer status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Tier', accessor: 'tier', sortable: true, Cell: row => <Badge>{row.tier || 'Standard'}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     {
       Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => (
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-          <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+          <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
           <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
         </div>
       )
@@ -149,7 +201,11 @@ function Customers() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No customers found." />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading customers from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No customers found." currentPage={tablePage} onPageChange={setTablePage} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Customer">

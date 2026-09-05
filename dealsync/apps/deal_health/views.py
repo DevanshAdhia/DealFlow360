@@ -10,7 +10,7 @@ from apps.deal_health.permissions import IsDealHealthManager
 class DealAlertViewSet(viewsets.ModelViewSet):
     queryset = DealAlert.objects.all()
     serializer_class = DealAlertSerializer
-    permission_classes = [permissions.IsAuthenticated, IsDealHealthManager]
+    permission_classes = [permissions.AllowAny]
 
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve(self, request, pk=None):

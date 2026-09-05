@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getPriceLists, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
@@ -8,7 +8,7 @@ const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 const emptyForm = { name: '', tier: 'Gold', currency: 'INR', effective: '', expiry: '', status: 'Active' };
 
 function PriceLists() {
-  const [data, setData] = useState(() => getPriceLists());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterTier, setFilterTier] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -18,56 +18,110 @@ function PriceLists() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getPriceLists());
+  const fetchPriceLists = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getPriceLists();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load price lists from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPriceLists();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
   const filtered = data.filter(pl => {
     const s = !search || pl.name?.toLowerCase().includes(search.toLowerCase());
     return s && (!filterTier || pl.tier === filterTier) && (!filterStatus || pl.status === filterStatus);
   });
 
   const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Required'; return e; };
-  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+  const openModal = (item = null) => {
+    setErrors({});
+    setEditingItem(item);
+    setFormData(item ? {
+      ...item,
+      status: item.status || (item.is_active ? 'Active' : 'Inactive')
+    } : { ...emptyForm });
+    setIsModalOpen(true);
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_pricelists', formData, isNew);
-      addAuditLog(null, isNew ? 'Created Price List' : 'Updated Price List', 'Price List', `${formData.name}`);
-      toast.success(isNew ? 'Price list created!' : 'Price list updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      const isAct = formData.status === 'Active';
+      const payload = {
+        name: formData.name,
+        currency: formData.currency || 'INR',
+        is_active: isAct,
+      };
+
+      if (editingItem) {
+        await api.updatePriceList(editingItem.id, payload);
+        toast.success('Price list updated in database!');
+      } else {
+        await api.createPriceList(payload);
+        toast.success('Price list created in database!');
+      }
+      setIsModalOpen(false);
+      await fetchPriceLists();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save price list in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const pl = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_pricelists', deleteConfirmId);
-    toast.info('Price list deleted.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deletePriceList(deleteConfirmId);
+      toast.info('Price list deleted from database.');
+      setDeleteConfirmId(null);
+      await fetchPriceLists();
+    } catch (err) {
+      toast.error('Failed to delete price list.');
+    }
   };
 
-  const handleToggle = (pl) => {
-    const ns = pl.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_pricelists', { ...pl, status: ns }, false);
-    toast.success(`Price list ${ns.toLowerCase()}.`); refresh();
+  const handleToggle = async (pl) => {
+    try {
+      const newStatus = (pl.status === 'Active' || pl.is_active) ? false : true;
+      await api.updatePriceList(pl.id, { is_active: newStatus });
+      toast.success(`Price list status toggled to ${newStatus ? 'Active' : 'Inactive'}.`);
+      await fetchPriceLists();
+    } catch (err) {
+      toast.error('Failed to toggle status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(pl => pl.status === 'Active').length;
+  const activeCount = data.filter(pl => pl.status === 'Active' || pl.is_active).length;
 
   const columns = [
     { Header: 'Name', accessor: 'name', sortable: true },
-    { Header: 'Tier', accessor: 'tier', sortable: true },
+    { Header: 'Tier', accessor: 'customer_tier_name', sortable: true, Cell: row => row.customer_tier_name || row.tier || 'All' },
     { Header: 'Currency', accessor: 'currency', sortable: true },
-    { Header: 'Effective', accessor: 'effective', sortable: true },
-    { Header: 'Expiry', accessor: 'expiry', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_pricelists', { ...row, status: s }, false); toast.success(`Price list status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Effective', accessor: 'effective', sortable: true, Cell: row => row.effective || row.created_at?.slice(0, 10) || 'N/A' },
+    { Header: 'Expiry', accessor: 'expiry', sortable: true, Cell: row => row.expiry || 'Open' },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-        <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+        <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
         <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
       </div>
     }
@@ -101,13 +155,6 @@ function PriceLists() {
           <div className="metric-value text-success">{activeCount}</div>
           <div className="metric-subtitle">Currently in use</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">ARCHIVED</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-          </div>
-          <div className="metric-value text-warning">{totalCount - activeCount}</div>
-          <div className="metric-subtitle">Inactive / archived</div>
-        </div>
       </div>
 
       <div className="card">
@@ -123,8 +170,12 @@ function PriceLists() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No price lists found."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Price List</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading price lists from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No price lists found."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Price List</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Price List' : 'Create Price List'}>

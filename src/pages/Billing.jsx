@@ -1,51 +1,74 @@
-import React, { useState } from 'react';
-import { getInvoices, saveEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 function Billing() {
-  const [data, setData] = useState(() => getInvoices());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refreshData = () => setData(getInvoices());
+  const fetchInvoices = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getInvoices();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load invoices from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
 
   const filteredData = data.filter(inv => {
-    const matchSearch = !search || inv.invoiceId?.toLowerCase().includes(search.toLowerCase()) || inv.customer?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || (inv.invoiceId || inv.invoice_number)?.toLowerCase().includes(search.toLowerCase()) || (inv.customer || inv.customer_name)?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = !filterStatus || inv.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const handleStatusChange = (invoice, newStatus) => {
-    saveEntity('df_invoices', { ...invoice, status: newStatus }, false);
-    addAuditLog(null, `Updated Invoice Status`, 'Invoice', `Invoice ${invoice.invoiceId} marked as ${newStatus}`);
-    toast.success(`Invoice ${invoice.invoiceId} marked as ${newStatus}.`);
-    refreshData();
+  const handleStatusChange = async (invoice, newStatus) => {
+    try {
+      const backendStatus = newStatus.toUpperCase().replace(' ', '_');
+      await api.updateInvoice(invoice.id, { status: backendStatus });
+      toast.success(`Invoice status updated to ${newStatus}.`);
+      await fetchInvoices();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update invoice status.');
+    }
   };
 
   const totalInvoices = data.length;
-  const paidCount = data.filter(i => i.status === 'Paid').length;
-  const overdueCount = data.filter(i => i.status === 'Overdue').length;
-  const outstandingAmount = data.filter(i => i.status !== 'Paid' && i.status !== 'Cancelled').reduce((s, i) => s + (i.amount || 0), 0);
+  const paidCount = data.filter(i => i.status === 'Paid' || i.status === 'PAID').length;
+  const overdueCount = data.filter(i => i.status === 'Overdue' || i.status === 'OVERDUE').length;
+  const outstandingAmount = data.filter(i => i.status !== 'Paid' && i.status !== 'PAID' && i.status !== 'CANCELLED' && i.status !== 'Cancelled').reduce((s, i) => s + Number(i.total_amount || i.amount || 0), 0);
 
   const columns = [
-    { Header: 'Invoice ID', accessor: 'invoiceId', sortable: true },
-    { Header: 'Customer', accessor: 'customer', sortable: true },
-    { Header: 'Order', accessor: 'order', sortable: true },
-    { Header: 'Amount', accessor: 'amount', sortable: true, Cell: row => `₹${(row.amount || 0).toLocaleString('en-IN')}` },
-    { Header: 'Due Date', accessor: 'due', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => handleStatusChange(row, s)}>{row.status}</Badge> },
+    { Header: 'Invoice Number', accessor: 'invoice_number', sortable: true, Cell: row => row.invoice_number || row.invoiceId || row.id },
+    { Header: 'Customer', accessor: 'customer_name', sortable: true, Cell: row => row.customer_name || row.customer || 'N/A' },
+    { Header: 'Quotation', accessor: 'quotation_number', sortable: true, Cell: row => row.quotation_number || row.quotation || 'N/A' },
+    { Header: 'Amount', accessor: 'total_amount', sortable: true, Cell: row => `₹${Number(row.total_amount ?? row.amount ?? 0).toLocaleString('en-IN')}` },
+    { Header: 'Due Date', accessor: 'due_date', sortable: true, Cell: row => row.due_date || row.due || 'N/A' },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || 'ISSUED'}</Badge> },
     {
       Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => (
         <div style={{ display: 'flex', gap: '6px' }}>
-          {row.status !== 'Paid' && row.status !== 'Cancelled' && (
+          {row.status !== 'PAID' && row.status !== 'Paid' && row.status !== 'CANCELLED' && row.status !== 'Cancelled' && (
             <button onClick={() => handleStatusChange(row, 'Paid')} className="btn-table-action success">Mark Paid</button>
           )}
-          {row.status === 'Draft' && (
+          {row.status === 'DRAFT' && (
             <button onClick={() => handleStatusChange(row, 'Issued')} className="btn-table-action edit">Issue</button>
           )}
-          {row.status !== 'Cancelled' && row.status !== 'Paid' && (
+          {row.status !== 'CANCELLED' && row.status !== 'Cancelled' && row.status !== 'PAID' && row.status !== 'Paid' && (
             <button onClick={() => handleStatusChange(row, 'Cancelled')} className="btn-table-action danger">Cancel</button>
           )}
         </div>
@@ -121,7 +144,11 @@ function Billing() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filteredData} emptyMessage="No invoices found." />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading invoices from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filteredData} emptyMessage="No invoices found." currentPage={tablePage} onPageChange={setTablePage} />
+        )}
       </div>
     </div>
   );

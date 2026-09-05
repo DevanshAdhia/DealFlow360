@@ -5,6 +5,7 @@ from apps.customer.models import CustomerTier
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -72,6 +73,7 @@ class PriceList(models.Model):
     customer_tier = models.ForeignKey(CustomerTier, on_delete=models.CASCADE, null=True, blank=True, related_name="price_lists")
     name = models.CharField(max_length=100)
     currency = models.CharField(max_length=10, default="USD")
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

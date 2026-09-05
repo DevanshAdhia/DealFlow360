@@ -1,1 +1,4 @@
-from apps.product.serializers.product_serializer import ProductSerializer, ProductCreateSerializer, ProductUpdateSerializer  # noqa: F401
+from apps.product.serializers.product_serializer import (
+    ProductSerializer, ProductCreateSerializer, ProductUpdateSerializer,
+    CategorySerializer, PriceListSerializer
+)  # noqa: F401

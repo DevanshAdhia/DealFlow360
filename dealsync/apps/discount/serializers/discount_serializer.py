@@ -1,31 +1,36 @@
 from rest_framework import serializers
-from apps.discount.models import Discount
+from apps.discount.models import DiscountRule, ApprovalRule, ApprovalLevel, ApprovalRuleStep
 
 
-class DiscountSerializer(serializers.ModelSerializer):
+class DiscountRuleSerializer(serializers.ModelSerializer):
+    tier_name = serializers.CharField(source="customer_tier.name", read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    status = serializers.SerializerMethodField()
+
     class Meta:
-        model = Discount
-        fields = ["id", "name", "description", "is_active", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        model = DiscountRule
+        fields = [
+            "id", "name", "customer_tier", "tier_name", "category", "category_name",
+            "max_discount_percent", "manager_threshold_percent",
+            "finance_threshold_percent", "min_margin_percent", "is_active", "status", "created_at"
+        ]
+
+    def get_status(self, obj) -> str:
+        return "Active" if getattr(obj, "is_active", True) else "Inactive"
 
 
-class DiscountCreateSerializer(serializers.ModelSerializer):
+class ApprovalRuleSerializer(serializers.ModelSerializer):
+    status = serializers.SerializerMethodField()
+
     class Meta:
-        model = Discount
-        fields = ["name", "description"]
+        model = ApprovalRule
+        fields = ["id", "name", "min_risk_score", "max_risk_score", "is_active", "status"]
 
-    def validate_name(self, value: str) -> str:
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError("Name must be at least 2 characters.")
-        return value.strip()
+    def get_status(self, obj) -> str:
+        return "Active" if getattr(obj, "is_active", True) else "Inactive"
 
 
-class DiscountUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Discount
-        fields = ["name", "description", "is_active"]
-
-    def validate_name(self, value: str) -> str:
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError("Name must be at least 2 characters.")
-        return value.strip()
+# Backward compatibility
+DiscountSerializer = DiscountRuleSerializer
+DiscountCreateSerializer = DiscountRuleSerializer
+DiscountUpdateSerializer = DiscountRuleSerializer

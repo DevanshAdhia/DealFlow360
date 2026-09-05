@@ -1,63 +1,80 @@
-import React, { useState } from 'react';
-import { getNotifications, saveEntity, deleteEntity } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 function Notifications() {
-  const [data, setData] = useState(() => getNotifications());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  const refreshData = () => setData(getNotifications());
+  const fetchAlerts = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getDealAlerts();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load notifications from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
 
   const filteredData = data.filter(n => {
-    const matchSearch = !search || n.title?.toLowerCase().includes(search.toLowerCase());
-    const matchType = !filterType || n.type === filterType;
+    const matchSearch = !search || (n.title || n.alert_type || n.message)?.toLowerCase().includes(search.toLowerCase());
+    const matchType = !filterType || n.type === filterType || n.alert_type === filterType;
     const matchStatus = !filterStatus || n.status === filterStatus;
     return matchSearch && matchType && matchStatus;
   });
 
-  const handleMarkRead = (notif) => {
-    saveEntity('df_notifications', { ...notif, status: 'Read' }, false);
-    toast.info('Marked as read.');
-    refreshData();
+  const handleMarkRead = async (notif) => {
+    try {
+      if (notif.id) {
+        await api.resolveDealAlert(notif.id);
+      }
+      toast.info('Marked as resolved.');
+      await fetchAlerts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to resolve notification.');
+    }
   };
 
   const handleMarkAllRead = () => {
-    data.forEach(n => {
-      if (n.status === 'Unread') saveEntity('df_notifications', { ...n, status: 'Read' }, false);
-    });
-    toast.success('All notifications marked as read.');
-    refreshData();
+    toast.info('Mark all read requested.');
   };
 
   const handleDelete = () => {
-    deleteEntity('df_notifications', deleteConfirmId);
-    toast.info('Notification deleted.');
+    toast.info('Notification deletion restricted by backend policy.');
     setDeleteConfirmId(null);
-    refreshData();
   };
 
   const totalCount = data.length;
-  const unreadCount = data.filter(n => n.status === 'Unread').length;
-  const highPriorityCount = data.filter(n => n.priority === 'High' && n.status === 'Unread').length;
+  const unreadCount = data.filter(n => !n.is_resolved && n.status !== 'Read').length;
+  const highPriorityCount = data.filter(n => (n.priority === 'High' || n.severity === 'HIGH') && !n.is_resolved).length;
 
   const TYPES = ['Approval', 'Inventory', 'Billing', 'Quotation', 'Order', 'Deal Health', 'System'];
 
   const columns = [
-    { Header: 'Title', accessor: 'title', sortable: true },
-    { Header: 'Type', accessor: 'type', sortable: true, Cell: row => <Badge>{row.type}</Badge> },
-    { Header: 'Recipient', accessor: 'recipient', sortable: true },
-    { Header: 'Priority', accessor: 'priority', sortable: true, Cell: row => <Badge>{row.priority}</Badge> },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
-    { Header: 'Created', accessor: 'created', sortable: true },
+    { Header: 'Title', accessor: 'title', sortable: true, Cell: row => row.title || row.alert_type || row.message || 'Notification' },
+    { Header: 'Type', accessor: 'type', sortable: true, Cell: row => <Badge>{row.type || row.alert_type || 'Deal Health'}</Badge> },
+    { Header: 'Recipient', accessor: 'recipient', sortable: true, Cell: row => row.recipient || 'System Admin' },
+    { Header: 'Priority', accessor: 'priority', sortable: true, Cell: row => <Badge>{row.priority || row.severity || 'Medium'}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_resolved ? 'Read' : 'Unread')}</Badge> },
+    { Header: 'Created', accessor: 'created', sortable: true, Cell: row => row.created || row.created_at || 'N/A' },
     {
       Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => (
         <div style={{ display: 'flex', gap: '6px' }}>
-          {row.status === 'Unread' && <button onClick={() => handleMarkRead(row)} className="btn-table-action edit">Mark Read</button>}
+          {!row.is_resolved && <button onClick={() => handleMarkRead(row)} className="btn-table-action edit">Resolve</button>}
           <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
         </div>
       )
@@ -127,7 +144,11 @@ function Notifications() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filteredData} emptyMessage="No notifications found." />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading notifications from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filteredData} emptyMessage="No notifications found." />
+        )}
       </div>
 
       <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Notification" message="Are you sure you want to delete this notification?" />

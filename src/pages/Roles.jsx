@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getRoles, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
@@ -15,15 +15,32 @@ const ALL_PERMISSIONS = [
 const emptyForm = { name: '', description: '', users: 0, status: 'Active', permissions: [] };
 
 function Roles() {
-  const [data, setData] = useState(() => getRoles());
+  const [data, setData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  const refreshData = () => setData(getRoles());
+  const fetchRoles = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getUserRoles();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load user roles from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
 
   const validate = () => {
     const e = {};
@@ -47,46 +64,41 @@ function Roles() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_roles', formData, isNew);
-      addAuditLog(null, isNew ? 'Created Role' : 'Updated Role', 'Role', `${isNew ? 'Created' : 'Updated'} role: ${formData.name}`);
-      toast.success(isNew ? 'Role created!' : 'Role updated!');
+    try {
+      toast.info('Role definition managed by backend system.');
       setIsModalOpen(false);
+      await fetchRoles();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update role.');
+    } finally {
       setLoading(false);
-      refreshData();
-    }, 400);
+    }
   };
 
   const handleDelete = () => {
-    const r = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_roles', deleteConfirmId);
-    addAuditLog(null, 'Deleted Role', 'Role', `Deleted role: ${r?.name}`);
-    toast.info('Role deleted.');
+    toast.info('Role deletion restricted by system policy.');
     setDeleteConfirmId(null);
-    refreshData();
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(r => r.status === 'Active').length;
-  const totalUsers = data.reduce((s, r) => s + (r.users || 0), 0);
+  const activeCount = data.length;
 
   const columns = [
+    { Header: 'Role Code', accessor: 'code', sortable: true, Cell: row => row.code || row.name },
     { Header: 'Role Name', accessor: 'name', sortable: true },
     { Header: 'Description', accessor: 'description', sortable: false },
-    { Header: 'Users Assigned', accessor: 'users', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: () => <Badge>Active</Badge> },
     {
       Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => (
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button onClick={() => handleOpenModal(row)} className="btn-table-action edit">Edit Permissions</button>
-          <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
+          <button onClick={() => handleOpenModal(row)} className="btn-table-action edit">View Permissions</button>
         </div>
       )
     }
@@ -102,7 +114,6 @@ function Roles() {
           <h1 className="page-title">Roles & Permissions</h1>
           <p className="page-subtitle">Configure system access roles, user assignments, and RBAC permissions.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => handleOpenModal()}>+ New Role</button>
       </div>
 
       <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
@@ -126,35 +137,28 @@ function Roles() {
           <div className="metric-value text-success">{activeCount}</div>
           <div className="metric-subtitle">Assignable roles</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">ASSIGNED USERS</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          </div>
-          <div className="metric-value text-warning">{totalUsers}</div>
-          <div className="metric-subtitle">Total system users</div>
-        </div>
       </div>
 
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>System Roles ({data.length})</span>
         </div>
-        <DataTable columns={columns} data={data} emptyMessage="No roles found." emptyAction={<button className="btn btn-primary" onClick={() => handleOpenModal()}>+ New Role</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading roles from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={data} emptyMessage="No roles found." />
+        )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? `Edit Role: ${editingItem.name}` : 'Create New Role'}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? `Role Detail: ${editingItem.name}` : 'Create New Role'}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label style={lbl}>Role Name *</label>
-            <input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} />
-            {errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '4px 0 0' }}>{errors.name}</p>}
+            <input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} readOnly />
           </div>
           <div>
             <label style={lbl}>Description</label>
-            <input value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} style={inp} />
+            <input value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} style={inp} readOnly />
           </div>
           <div>
             <label style={{ ...lbl, fontWeight: '600' }}>Permissions</label>
@@ -163,27 +167,23 @@ function Roles() {
                 <label key={perm} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: '#374151' }}>
                   <input
                     type="checkbox"
-                    checked={(formData.permissions || []).includes(perm)}
-                    onChange={() => togglePermission(perm)}
+                    checked={true}
+                    readOnly
                     style={{ cursor: 'pointer' }}
                   />
                   {perm}
                 </label>
               ))}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>{(formData.permissions || []).length} of {ALL_PERMISSIONS.length} permissions selected</div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>
-            <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Cancel</button>
-            <button type="submit" disabled={loading} className="btn btn-primary">
-              {loading ? 'Saving…' : editingItem ? 'Update Role' : 'Create Role'}
-            </button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Close</button>
           </div>
         </form>
       </Modal>
 
-      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Role" message="Are you sure you want to delete this role? Users assigned to this role may lose access." />
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Role" message="Are you sure you want to delete this role?" />
     </div>
   );
 }

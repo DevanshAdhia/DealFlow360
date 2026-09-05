@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { getUsers, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
-const ROLES = ['Admin', 'Sales Manager', 'Sales Representative', 'Finance', 'Operations'];
+const ROLES = ['Admin', 'Sales Manager', 'Sales Representative', 'Finance', 'Customer'];
 const DEPARTMENTS = ['IT', 'Sales', 'Finance', 'Operations', 'HR'];
 const STATUSES = ['Active', 'Inactive', 'Suspended'];
 const emptyForm = { name: '', email: '', phone: '', department: 'Sales', role: 'Sales Representative', status: 'Active' };
 
 function Users() {
-  const [data, setData] = useState(() => getUsers());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -19,12 +19,29 @@ function Users() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
-  const refresh = () => setData(getUsers());
+  const fetchUsers = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getUsers();
+      const userList = Array.isArray(res) ? res : res.results || [];
+      setData(userList);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load users from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filtered = data.filter(u => {
     const s = !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
-    const r = !filterRole || u.role === filterRole;
+    const r = !filterRole || u.role === filterRole || u.profile?.role === filterRole;
     const st = !filterStatus || u.status === filterStatus;
     return s && r && st;
   });
@@ -44,36 +61,59 @@ function Users() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_users', formData, isNew);
-      addAuditLog(null, isNew ? 'Created User' : 'Updated User', 'User', `${isNew ? 'Created' : 'Updated'} user: ${formData.name}`);
-      toast.success(isNew ? 'User created!' : 'User updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      if (editingItem) {
+        const res = await api.updateUser(editingItem.id, formData);
+        toast.success('User updated successfully!');
+        setData(prev => prev.map(u => u.id === editingItem.id ? (res || { ...u, ...formData }) : u));
+      } else {
+        const res = await api.createUser(formData);
+        toast.success('User created successfully!');
+        if (res && res.id) {
+          setData(prev => [res, ...prev]);
+        } else {
+          await fetchUsers();
+        }
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err.message || 'Operation failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const u = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_users', deleteConfirmId);
-    addAuditLog(null, 'Deleted User', 'User', `Deleted: ${u?.name}`);
-    toast.info('User deleted.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteUser(deleteConfirmId);
+      toast.info('User deleted successfully.');
+      setData(prev => prev.filter(u => u.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete user.');
+    }
   };
 
-  const handleStatus = (user, s) => {
-    saveEntity('df_users', { ...user, status: s }, false);
-    addAuditLog(null, `${s} User`, 'User', `${user.name} set to ${s}`);
-    toast.success(`User ${s.toLowerCase()}.`); refresh();
+  const handleStatus = async (user, s) => {
+    try {
+      await api.setUserStatus(user.id, s);
+      toast.success(`User set to ${s.toLowerCase()}.`);
+      setData(prev => prev.map(u => u.id === user.id ? { ...u, status: s, is_active: (s === 'Active') } : u));
+    } catch (err) {
+      toast.error(err.message || 'Failed to update user status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(u => u.status === 'Active').length;
-  const inactiveCount = data.filter(u => u.status !== 'Active').length;
+  const activeCount = data.filter(u => u.status === 'Active' || u.is_active).length;
+  const inactiveCount = data.filter(u => u.status !== 'Active' && !u.is_active).length;
 
   const columns = [
     { Header: 'Name', accessor: 'name', sortable: true },
@@ -99,7 +139,7 @@ function Users() {
 
   return (
     <div>
-      {/* PAGE HEADER — same as Dashboard */}
+      {/* PAGE HEADER */}
       <div className="page-header">
         <div className="page-title-group">
           <h1 className="page-title">User Management</h1>
@@ -108,7 +148,7 @@ function Users() {
         <button className="btn btn-primary" onClick={() => openModal()}>+ Add User</button>
       </div>
 
-      {/* KPI CARDS — same .metric-card classes as Dashboard */}
+      {/* KPI CARDS */}
       <div className="metric-grid">
         <div className="metric-card">
           <div className="metric-header">
@@ -160,8 +200,12 @@ function Users() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No users found."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add User</button>} />
+        {pageLoading && data.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading users from backend…</div>
+        ) : (
+          <DataTable loading={pageLoading} columns={columns} data={filtered} emptyMessage="No users found."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add User</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit User' : 'Create User'}>

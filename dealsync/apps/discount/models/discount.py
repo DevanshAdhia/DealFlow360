@@ -5,12 +5,14 @@ from apps.product.models import Category
 
 
 class DiscountRule(models.Model):
+    name = models.CharField(max_length=100, blank=True, default="")
     customer_tier = models.ForeignKey(CustomerTier, on_delete=models.CASCADE, null=True, blank=True, related_name="discount_rules")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True, blank=True, related_name="discount_rules")
     max_discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=10.00)
     manager_threshold_percent = models.DecimalField(max_digits=5, decimal_places=2, default=15.00)
     finance_threshold_percent = models.DecimalField(max_digits=5, decimal_places=2, default=25.00)
     min_margin_percent = models.DecimalField(max_digits=5, decimal_places=2, default=15.00)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -20,7 +22,8 @@ class DiscountRule(models.Model):
     def __str__(self) -> str:
         tier_name = self.customer_tier.name if self.customer_tier else "All"
         cat_name = self.category.name if self.category else "All"
-        return f"Rule: {tier_name} - {cat_name} (Max {self.max_discount_percent}%)"
+        rule_label = self.name or f"Rule: {tier_name} - {cat_name}"
+        return f"{rule_label} (Max {self.max_discount_percent}%)"
 
 
 class ApprovalLevel(models.Model):
@@ -40,6 +43,7 @@ class ApprovalRule(models.Model):
     name = models.CharField(max_length=100)
     min_risk_score = models.IntegerField(default=0)
     max_risk_score = models.IntegerField(default=100)
+    is_active = models.BooleanField(default=True, db_index=True)
 
     class Meta:
         db_table = "approval_rules"

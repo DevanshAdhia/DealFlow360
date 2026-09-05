@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getDiscountRules, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
@@ -8,7 +8,7 @@ const CATEGORIES = ['Enterprise Servers', 'Cloud Storage', 'Networking', 'Securi
 const emptyForm = { name: '', tier: 'Gold', category: 'Enterprise Servers', maxDiscount: 10, minMargin: 20, priority: 1, status: 'Active' };
 
 function DiscountRules() {
-  const [data, setData] = useState(() => getDiscountRules());
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterTier, setFilterTier] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -18,59 +18,110 @@ function DiscountRules() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getDiscountRules());
+  const fetchDiscountRules = async () => {
+    setPageLoading(true);
+    try {
+      const res = await api.getDiscountRules();
+      const list = Array.isArray(res) ? res : res.results || [];
+      setData(list);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load discount rules from backend.');
+      setData([]);
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDiscountRules();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
   const filtered = data.filter(d => {
     const s = !search || d.name?.toLowerCase().includes(search.toLowerCase()) || d.tier?.toLowerCase().includes(search.toLowerCase());
     return s && (!filterTier || d.tier === filterTier) && (!filterStatus || d.status === filterStatus);
   });
 
   const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Required'; if (formData.maxDiscount < 0 || formData.maxDiscount > 100) e.maxDiscount = '0–100'; return e; };
-  const openModal = (item = null) => { setErrors({}); setEditingItem(item); setFormData(item ? { ...item } : { ...emptyForm }); setIsModalOpen(true); };
+  const openModal = (item = null) => { 
+    setErrors({}); 
+    setEditingItem(item); 
+    setFormData(item ? { 
+      ...item, 
+      status: item.status || (item.is_active ? 'Active' : 'Inactive') 
+    } : { ...emptyForm }); 
+    setIsModalOpen(true); 
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_discount_rules', { ...formData, maxDiscount: Number(formData.maxDiscount), minMargin: Number(formData.minMargin), priority: Number(formData.priority) }, isNew);
-      addAuditLog(null, isNew ? 'Created Discount Rule' : 'Updated Discount Rule', 'Discount Rule', formData.name);
-      toast.success(isNew ? 'Rule created!' : 'Rule updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      const payload = {
+        name: formData.name,
+        max_discount: Number(formData.maxDiscount || formData.max_discount || 0),
+        is_active: formData.status === 'Active'
+      };
+
+      if (editingItem) {
+        await api.updateDiscountRule(editingItem.id, payload);
+      } else {
+        await api.createDiscountRule(payload);
+      }
+      toast.success(editingItem ? 'Discount rule updated in database!' : 'Discount rule created in database!');
+      setIsModalOpen(false);
+      await fetchDiscountRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save discount rule in database.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const r = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_discount_rules', deleteConfirmId);
-    addAuditLog(null, 'Deleted Discount Rule', 'Discount Rule', r?.name);
-    toast.info('Rule deleted.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteDiscountRule(deleteConfirmId);
+      toast.success('Discount rule deleted successfully!');
+      await fetchDiscountRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete discount rule.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
-  const handleToggle = (r) => {
-    const ns = r.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_discount_rules', { ...r, status: ns }, false);
-    addAuditLog(null, `${ns} Discount Rule`, 'Discount Rule', r.name);
-    toast.info(`Rule ${ns.toLowerCase()}.`); refresh();
+  const handleToggle = async (r) => {
+    try {
+      const isCurrentlyActive = r.status === 'Active' || r.is_active;
+      await api.updateDiscountRule(r.id, { is_active: !isCurrentlyActive });
+      toast.success(`Discount rule ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
+      await fetchDiscountRules();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update rule status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(r => r.status === 'Active').length;
-  const avgMax = data.length > 0 ? (data.reduce((s, r) => s + Number(r.maxDiscount || 0), 0) / data.length).toFixed(1) : 0;
+  const activeCount = data.filter(r => r.status === 'Active' || r.is_active).length;
+  const avgMax = data.length > 0 ? (data.reduce((s, r) => s + Number(r.max_discount_percent ?? r.maxDiscount ?? r.max_discount ?? 0), 0) / data.length).toFixed(1) : 0;
 
   const columns = [
-    { Header: 'Rule Name', accessor: 'name', sortable: true },
-    { Header: 'Customer Tier', accessor: 'tier', sortable: true },
-    { Header: 'Category', accessor: 'category', sortable: true },
-    { Header: 'Max Discount', accessor: 'maxDiscount', sortable: true, Cell: row => `${row.maxDiscount}%` },
-    { Header: 'Min Margin', accessor: 'minMargin', sortable: true, Cell: row => `${row.minMargin}%` },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_discount_rules', { ...row, status: s }, false); toast.success(`Discount rule status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Rule Name', accessor: 'name', sortable: true, Cell: row => row.name || (row.tier_name ? `${row.tier_name} Rule` : `Rule #${row.id}`) },
+    { Header: 'Customer Tier', accessor: 'tier', sortable: true, Cell: row => row.tier_name || row.tier || 'All Tiers' },
+    { Header: 'Category', accessor: 'category', sortable: true, Cell: row => row.category_name || row.category || 'All Categories' },
+    { Header: 'Max Discount', accessor: 'maxDiscount', sortable: true, Cell: row => `${row.max_discount_percent ?? row.maxDiscount ?? row.max_discount ?? 0}%` },
+    { Header: 'Min Margin', accessor: 'minMargin', sortable: true, Cell: row => `${row.min_margin_percent ?? row.minMargin ?? row.min_margin ?? 0}%` },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     { Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-        <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+        <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
         <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
       </div>
     }
@@ -126,8 +177,12 @@ function DiscountRules() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No discount rules configured."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading discount rules from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No discount rules configured."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Discount Rule' : 'Create Discount Rule'}>

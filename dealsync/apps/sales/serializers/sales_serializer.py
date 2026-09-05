@@ -143,6 +143,10 @@ class QuotationSerializer(serializers.ModelSerializer):
     and version history counts without exposing writable internal state directly.
     """
     items = QuotationItemSerializer(many=True, read_only=True)
+    customer_name = serializers.CharField(source="customer.name", read_only=True, default="N/A")
+    sales_rep_name = serializers.SerializerMethodField()
+    discount_percent = serializers.SerializerMethodField()
+    risk_level = serializers.SerializerMethodField()
     versions_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -151,7 +155,9 @@ class QuotationSerializer(serializers.ModelSerializer):
             "id",
             "quotation_number",
             "customer_id",
+            "customer_name",
             "sales_rep_id",
+            "sales_rep_name",
             "status",
             "approval_status",
             "valid_until",
@@ -159,12 +165,14 @@ class QuotationSerializer(serializers.ModelSerializer):
             "notes",
             "subtotal",
             "discount_amount",
+            "discount_percent",
             "tax_amount",
             "total_amount",
             "cost_amount",
             "margin_amount",
             "margin_percent",
             "blended_risk_score",
+            "risk_level",
             "items",
             "versions_count",
             "is_active",
@@ -187,6 +195,25 @@ class QuotationSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_sales_rep_name(self, obj: Quotation) -> str:
+        if obj.sales_rep:
+            full_name = obj.sales_rep.get_full_name()
+            return full_name if full_name else obj.sales_rep.email
+        return "N/A"
+
+    def get_discount_percent(self, obj: Quotation) -> float:
+        if obj.subtotal and obj.subtotal > 0:
+            return float(round((obj.discount_amount / obj.subtotal) * 100, 2))
+        return 0.0
+
+    def get_risk_level(self, obj: Quotation) -> str:
+        score = float(obj.blended_risk_score or 0)
+        if score > 70:
+            return "High"
+        elif score > 30:
+            return "Medium"
+        return "Low"
 
     def get_versions_count(self, obj: Quotation) -> int:
         """Prefetched count avoiding N+1 database queries."""

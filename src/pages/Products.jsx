@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { getProducts, getCategories, saveEntity, deleteEntity, addAuditLog } from '../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/apiService';
 import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 const emptyForm = { name: '', sku: '', category: '', costPrice: '', basePrice: '', tax: 18, stock: 0, status: 'Active' };
 
 function Products() {
-  const allCategories = getCategories();
-  const [data, setData] = useState(() => getProducts());
+  const [categories, setCategories] = useState([]);
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -17,12 +17,36 @@ function Products() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [tablePage, setTablePage] = useState(1);
 
-  const refresh = () => setData(getProducts());
+  const fetchProducts = async () => {
+    setPageLoading(true);
+    try {
+      const [prodRes, catRes] = await Promise.allSettled([api.getProducts(), api.getCategories()]);
+      if (prodRes.status === 'fulfilled') {
+        const list = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value.results || [];
+        setData(list);
+      } else {
+        toast.error(prodRes.reason?.message || 'Failed to load products from backend.');
+        setData([]);
+      }
+      if (catRes.status === 'fulfilled') {
+        const catList = Array.isArray(catRes.value) ? catRes.value : catRes.value.results || [];
+        setCategories(catList);
+      }
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+  useEffect(() => { setTablePage(1); }, [search, filterCategory, filterStatus]);
   const filtered = data.filter(p => {
     const s = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
-    return s && (!filterCat || p.category === filterCat) && (!filterStatus || p.status === filterStatus);
+    return s && (!filterCat || p.category === filterCat || p.category_name === filterCat) && (!filterStatus || p.status === filterStatus);
   });
 
   const margin = formData.basePrice && formData.costPrice
@@ -40,55 +64,92 @@ function Products() {
   const openModal = (item = null) => {
     setErrors({});
     setEditingItem(item);
-    setFormData(item ? { ...item } : { ...emptyForm, category: allCategories[0]?.name || '' });
+    setFormData(item ? {
+      ...item,
+      basePrice: item.sales_price || item.basePrice || '',
+      costPrice: item.cost_price || item.costPrice || '',
+      tax: item.tax_percent || item.tax || 18,
+      status: item.status || (item.is_active ? 'Active' : 'Inactive')
+    } : { ...emptyForm, category: categories[0]?.id || categories[0]?.name || '' });
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); toast.error('Please fix errors.'); return; }
+    if (Object.keys(errs).length) { setErrors(errs); toast.error('Please fix validation errors.'); return; }
+    
     setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingItem;
-      saveEntity('df_products', { ...formData, basePrice: Number(formData.basePrice), costPrice: Number(formData.costPrice), tax: Number(formData.tax), stock: Number(formData.stock) }, isNew);
-      addAuditLog(null, isNew ? 'Created Product' : 'Updated Product', 'Product', `${isNew ? 'Created' : 'Updated'}: ${formData.name}`);
-      toast.success(isNew ? 'Product created!' : 'Product updated!');
-      setIsModalOpen(false); setLoading(false); refresh();
-    }, 400);
+    try {
+      const payload = {
+        name: formData.name,
+        sku: formData.sku,
+        sales_price: Number(formData.basePrice),
+        cost_price: Number(formData.costPrice || 0),
+        tax_percent: Number(formData.tax || 0),
+        is_active: formData.status === 'Active'
+      };
+      if (formData.category && typeof formData.category === 'number') {
+        payload.category = formData.category;
+      }
+
+      if (editingItem) {
+        await api.updateProduct(editingItem.id, payload);
+      } else {
+        await api.createProduct(payload);
+      }
+      toast.success(editingItem ? 'Product updated successfully!' : 'Product created successfully!');
+      setIsModalOpen(false);
+      await fetchProducts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to save product.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    const p = data.find(x => x.id === deleteConfirmId);
-    deleteEntity('df_products', deleteConfirmId);
-    addAuditLog(null, 'Deleted Product', 'Product', `Deleted: ${p?.name}`);
-    toast.info('Product deleted.'); setDeleteConfirmId(null); refresh();
+  const handleDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await api.deleteProduct(deleteConfirmId);
+      toast.success('Product deleted successfully!');
+      await fetchProducts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete product.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
-  const handleToggle = (p) => {
-    const ns = p.status === 'Active' ? 'Inactive' : 'Active';
-    saveEntity('df_products', { ...p, status: ns }, false);
-    toast.success(`Product ${ns.toLowerCase()}.`); refresh();
+  const handleToggle = async (p) => {
+    try {
+      const isCurrentlyActive = p.status === 'Active' || p.is_active;
+      await api.updateProduct(p.id, { is_active: !isCurrentlyActive });
+      toast.success(`Product ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
+      await fetchProducts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update product status.');
+    }
   };
 
   const totalCount = data.length;
-  const activeCount = data.filter(p => p.status === 'Active').length;
+  const activeCount = data.filter(p => p.status === 'Active' || p.is_active).length;
   const lowStockCount = data.filter(p => p.stock > 0 && p.stock < 10).length;
   const outOfStockCount = data.filter(p => !p.stock || p.stock === 0).length;
 
   const columns = [
     { Header: 'Product Name', accessor: 'name', sortable: true },
     { Header: 'SKU', accessor: 'sku', sortable: true },
-    { Header: 'Category', accessor: 'category', sortable: true },
-    { Header: 'Base Price', accessor: 'basePrice', sortable: true, Cell: row => `₹${Number(row.basePrice || 0).toLocaleString('en-IN')}` },
+    { Header: 'Category', accessor: 'category', sortable: true, Cell: row => row.category_name || row.category || 'N/A' },
+    { Header: 'Base Price', accessor: 'basePrice', sortable: true, Cell: row => `₹${Number(row.basePrice || row.base_price || 0).toLocaleString('en-IN')}` },
     { Header: 'Stock', accessor: 'stock', sortable: true },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge onChange={s => { saveEntity('df_products', { ...row, status: s }, false); toast.success(`Product status updated to ${s}`); refresh(); }}>{row.status}</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
     {
       Header: 'Actions', accessor: 'actions', sortable: false,
       Cell: row => (
         <div style={{ display: 'flex', gap: '6px' }}>
           <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-          <button onClick={() => handleToggle(row)} className="btn-table-action warn">{row.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
+          <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
           <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
         </div>
       )
@@ -146,7 +207,7 @@ function Products() {
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or SKU…" className="form-input" style={{ width: '180px', height: '32px' }} />
             <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className="form-select" style={{ width: '150px', height: '32px' }}>
               <option value="">All Categories</option>
-              {allCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              {categories.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
             </select>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '130px', height: '32px' }}>
               <option value="">All Statuses</option>
@@ -155,8 +216,12 @@ function Products() {
             </select>
           </div>
         </div>
-        <DataTable columns={columns} data={filtered} emptyMessage="No products found."
-          emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add Product</button>} />
+        {pageLoading ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading products from backend…</div>
+        ) : (
+          <DataTable columns={columns} data={filtered} emptyMessage="No products found."
+            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ Add Product</button>} />
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Product' : 'Create Product'}>
@@ -164,7 +229,7 @@ function Products() {
           <div><label style={lbl}>Product Name *</label><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} />{errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.name}</p>}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div><label style={lbl}>SKU *</label><input value={formData.sku || ''} onChange={e => setFormData({ ...formData, sku: e.target.value })} style={{ ...inp, borderColor: errors.sku ? '#ef4444' : '#d1d5db' }} />{errors.sku && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.sku}</p>}</div>
-            <div><label style={lbl}>Category</label><select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} style={inp}>{allCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}</select></div>
+            <div><label style={lbl}>Category</label><select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} style={inp}>{categories.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}</select></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div><label style={lbl}>Cost Price (₹)</label><input type="number" value={formData.costPrice || ''} onChange={e => setFormData({ ...formData, costPrice: e.target.value })} style={inp} /></div>

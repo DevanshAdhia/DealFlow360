@@ -5,7 +5,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
-from apps.signup.models import Signup
+from django.contrib.auth.models import User
+from apps.signup.models import Signup, UserProfile
 from apps.signup.serializers import (
     SignupSerializer,
     SignupCreateSerializer,
@@ -13,6 +14,7 @@ from apps.signup.serializers import (
     UserRegistrationSerializer,
     UserRegistrationResponseSerializer,
     UserRoleInfoSerializer,
+    UserDetailSerializer,
 )
 from apps.signup.services import SignupService
 from dealsync.pagination import StandardResultsPagination
@@ -22,7 +24,7 @@ from dealsync.pagination import StandardResultsPagination
 class SignupViewSet(viewsets.ModelViewSet):
     """
     SignupViewSet manages user registration, account onboarding, role discovery,
-    and legacy signup records.
+    and user account administration across the platform.
     """
     permission_classes = [AllowAny]
     pagination_class = StandardResultsPagination
@@ -31,7 +33,7 @@ class SignupViewSet(viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_permissions(self):
-        if self.action in ["create", "register", "roles"]:
+        if self.action in ["create", "register", "roles", "users", "user_detail"]:
             return [AllowAny()]
         return [IsAuthenticated()]
 
@@ -44,6 +46,88 @@ class SignupViewSet(viewsets.ModelViewSet):
         if self.action == "update":
             return SignupUpdateSerializer
         return SignupSerializer
+
+    @action(detail=False, methods=["get", "post"], url_path="users")
+    def users(self, request: Request) -> Response:
+        """
+        GET: List all system users in Django database.
+        POST: Create a system user (Admin creation).
+        """
+        if request.method == "GET":
+            users_qs = User.objects.all().select_related("profile").order_by("-id")
+            serializer = UserDetailSerializer(users_qs, many=True)
+            return Response(serializer.data)
+
+        # POST creation
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = SignupService.register_user(
+            **serializer.validated_data,
+            is_admin_creation=True,
+        )
+        return Response(
+            UserDetailSerializer(result["user"]).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["put", "patch", "delete", "post"], url_path="manage")
+    def user_detail(self, request: Request, pk=None) -> Response:
+        """
+        PUT/PATCH: Update user details.
+        DELETE: Delete user.
+        POST: Change user status.
+        """
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == "DELETE":
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        if request.method == "POST":
+            # Status change toggle
+            new_status = request.data.get("status", "Active")
+            is_act = (new_status == "Active")
+            user.is_active = is_act
+            user.save(update_fields=["is_active"])
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.is_active = is_act
+            profile.save(update_fields=["is_active"])
+            return Response(UserDetailSerializer(user).data)
+
+        # PUT/PATCH update
+        data = request.data
+        if "name" in data:
+            parts = data["name"].strip().split(" ", 1)
+            user.first_name = parts[0]
+            user.last_name = parts[1] if len(parts) > 1 else ""
+        if "email" in data and data["email"] != user.email:
+            if User.objects.filter(email__iexact=data["email"]).exclude(pk=user.pk).exists():
+                return Response({"email": ["A user with this email already exists."]}, status=status.HTTP_400_BAD_REQUEST)
+            user.email = data["email"].strip().lower()
+        if "status" in data:
+            is_act = (data["status"] == "Active")
+            user.is_active = is_act
+        user.save()
+
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if "role" in data:
+            valid_ser = UserRegistrationSerializer()
+            try:
+                role_val = valid_ser.validate_role(data["role"])
+                profile.role = role_val
+            except Exception as e:
+                pass
+        if "department" in data or "company" in data:
+            profile.company = data.get("department") or data.get("company", profile.company)
+        if "phone" in data:
+            profile.phone = data["phone"]
+        profile.is_active = user.is_active
+        profile.save()
+
+        return Response(UserDetailSerializer(user).data)
 
     @extend_schema(
         summary="User Registration / Signup",

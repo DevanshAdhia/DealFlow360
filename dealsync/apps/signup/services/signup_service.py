@@ -23,22 +23,41 @@ class SignupService:
     @staticmethod
     @transaction.atomic
     def register_user(
-        username: str,
-        email: str,
-        password: str,
+        username: str = "",
+        email: str = "",
+        password: str = "Pass123456!",
         first_name: str = "",
         last_name: str = "",
+        name: str = "",
         role: str = UserRole.SALES_REP,
         phone: str = "",
         company: str = "",
+        department: str = "",
+        status: str = "Active",
         ip_address: str = None,
+        is_admin_creation: bool = False,
     ) -> Dict[str, Any]:
         """
         transaction.atomic() guarantees User creation, UserProfile association,
         SignupAudit log creation, and initial JWT token generation succeed atomically.
         """
-        if role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.SALES_MANAGER]:
-            raise ValueError("Self-registration for administrative roles (ADMIN, FINANCE, SALES_MANAGER) is prohibited.")
+        if not is_admin_creation and role in [UserRole.ADMIN, UserRole.FINANCE, UserRole.SALES_MANAGER]:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"role": "Self-registration for administrative roles (ADMIN, FINANCE, SALES_MANAGER) is prohibited."})
+
+        if name and not (first_name or last_name):
+            parts = name.strip().split(" ", 1)
+            first_name = parts[0]
+            last_name = parts[1] if len(parts) > 1 else ""
+
+        if not username:
+            base_user = email.split("@")[0] if email else "user"
+            username = base_user
+            idx = 1
+            while User.objects.filter(username__iexact=username).exists():
+                username = f"{base_user}_{idx}"
+                idx += 1
+
         user = User.objects.create_user(
             username=username,
             email=email,
@@ -47,11 +66,18 @@ class SignupService:
             last_name=last_name,
         )
 
+        is_act = (status == "Active")
+        user.is_active = is_act
+        user.save(update_fields=["is_active"])
+
+        company_val = company or department
+
         UserProfile.objects.create(
             user=user,
             role=role,
             phone=phone,
-            company=company,
+            company=company_val,
+            is_active=is_act,
         )
 
         SignupAudit.objects.create(

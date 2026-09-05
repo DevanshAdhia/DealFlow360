@@ -1,27 +1,45 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema
 
-from apps.product.models import Product
-from apps.product.serializers import ProductSerializer, ProductCreateSerializer, ProductUpdateSerializer
+from apps.product.models import Product, Category, PriceList
+from apps.product.serializers import (
+    ProductSerializer, ProductCreateSerializer, ProductUpdateSerializer,
+    CategorySerializer, PriceListSerializer
+)
 from apps.product.services import ProductService
 from dealsync.pagination import StandardResultsPagination
-from dealsync.responses import success_response, error_response
+
+
+@extend_schema(tags=["Category"])
+class CategoryViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = Category.objects.all().order_by("name")
+    serializer_class = CategorySerializer
+    pagination_class = None
+
+
+@extend_schema(tags=["PriceList"])
+class PriceListViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = PriceList.objects.all().select_related("customer_tier").order_by("-created_at")
+    serializer_class = PriceListSerializer
+    pagination_class = None
 
 
 @extend_schema(tags=["Product"])
 class ProductViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     pagination_class = StandardResultsPagination
-    search_fields = ["name", "description"]
+    search_fields = ["name", "sku", "description"]
     ordering_fields = ["name", "created_at", "updated_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        return Product.objects.filter(is_active=True)
+        return Product.objects.filter(is_active=True).select_related("category")
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -30,67 +48,43 @@ class ProductViewSet(viewsets.ModelViewSet):
             return ProductUpdateSerializer
         return ProductSerializer
 
-    @extend_schema(
-        summary="List Products",
-        description="Returns a paginated list of all active products.",
-    )
+    @extend_schema(summary="List Products", description="Returns a paginated list of all active products.")
     def list(self, request: Request, *args, **kwargs) -> Response:
         return super().list(request, *args, **kwargs)
 
-    @extend_schema(
-        summary="Create Product",
-        description="Creates a new product.",
-    )
+    @extend_schema(summary="Create Product", description="Creates a new product.")
     def create(self, request: Request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = ProductService.create(**serializer.validated_data)
-        return Response(
-            ProductSerializer(instance).data,
-            status=status.HTTP_201_CREATED,
-        )
+        instance = serializer.save()
+        return Response(ProductSerializer(instance).data, status=status.HTTP_201_CREATED)
 
-    @extend_schema(
-        summary="Retrieve Product",
-        description="Returns a single product by ID.",
-    )
+    @extend_schema(summary="Retrieve Product", description="Returns a single product by ID.")
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
         return super().retrieve(request, *args, **kwargs)
 
-    @extend_schema(
-        summary="Update Product",
-        description="Updates an existing product.",
-    )
+    @extend_schema(summary="Update Product", description="Updates an existing product.")
     def update(self, request: Request, *args, **kwargs) -> Response:
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=kwargs.pop("partial", False))
         serializer.is_valid(raise_exception=True)
-        updated = ProductService.update(instance=instance, **serializer.validated_data)
+        updated = serializer.save()
         return Response(ProductSerializer(updated).data)
 
-    @extend_schema(
-        summary="Delete Product",
-        description="Deletes a product.",
-    )
+    @extend_schema(summary="Delete Product", description="Deletes a product.")
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         instance = self.get_object()
-        ProductService.delete(instance=instance)
+        instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @extend_schema(
-        summary="Activate Product",
-        description="Activates a deactivated product.",
-    )
+    @extend_schema(summary="Activate Product", description="Activates a deactivated product.")
     @action(detail=True, methods=["post"], url_path="activate")
     def activate(self, request: Request, pk=None) -> Response:
         instance = self.get_object()
         instance.activate()
         return Response(ProductSerializer(instance).data)
 
-    @extend_schema(
-        summary="Deactivate Product",
-        description="Deactivates an active product.",
-    )
+    @extend_schema(summary="Deactivate Product", description="Deactivates an active product.")
     @action(detail=True, methods=["post"], url_path="deactivate")
     def deactivate(self, request: Request, pk=None) -> Response:
         instance = self.get_object()
