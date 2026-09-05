@@ -31,9 +31,62 @@ import { useToast } from '../hooks/useToast.js';
 import { QuotationStats } from '../components/quotations/QuotationStats.jsx';
 import { QuotationTable } from '../components/quotations/QuotationTable.jsx';
 import { Button, Input, Select, Modal } from '../components/common/UI.jsx';
-import { JsonInspectorModal } from '../components/common/JsonInspectorModal.jsx';
+
 import { dataService } from '../services/dataService.js';
 import { formatINRCompact, formatINR } from '../utils/formatters.js';
+
+// ── Customer Selector Modal ──────────────────────────────────────────────────
+const CustomerSelectorModal = ({ isOpen, onClose, onSelect }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const customers = useMemo(() => dataService.getCustomers(), []);
+  
+  const filtered = customers.filter(c => 
+    c.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.id?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Select Customer for Quotation">
+      <div style={{ marginBottom: '1rem' }}>
+        <Input 
+          icon={Search}
+          placeholder="Search customers..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {filtered.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No customers found.</p>
+        ) : (
+          filtered.map(c => (
+            <div 
+              key={c.id}
+              onClick={() => onSelect(c.id)}
+              style={{
+                padding: '0.75rem', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--surface-secondary)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <div>
+                <div style={{ fontWeight: 600 }}>{c.companyName}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.id} - {c.industry}</div>
+              </div>
+              <ArrowRight size={16} color="var(--primary)" />
+            </div>
+          ))
+        )}
+      </div>
+    </Modal>
+  );
+};
 
 // ── Stage Configuration ──────────────────────────────────────────────────────
 const KANBAN_STAGES = [
@@ -346,7 +399,19 @@ export const Quotations = () => {
   const [healthFilter, setHealthFilter] = useState('all');
   const [tierFilter, setTierFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+
+  const handleExport = (quotesToExport) => {
+    alert("Exporting " + quotesToExport.length + " quotations as CSV...");
+    // Mock export functionality
+  };
+
+  const handleCreateNew = (customerId) => {
+    setIsCustomerModalOpen(false);
+    navigate('/quotations/new', { state: { preSelectedCustomerId: customerId } });
+  };
 
   // Compute displayed list
   const displayedQuotations = useMemo(() => {
@@ -473,21 +538,7 @@ export const Quotations = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {/* View JSON */}
-          <button
-            onClick={() => setIsJsonModalOpen(true)}
-            className="btn"
-            style={{
-              backgroundColor: 'rgba(79,70,229,0.08)', color: '#4F46E5',
-              border: '1px solid rgba(79,70,229,0.2)',
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-              fontWeight: 600, fontSize: '0.8125rem',
-              padding: '0.5rem 0.875rem', borderRadius: 'var(--radius-md)', cursor: 'pointer'
-            }}
-          >
-            <Code size={14} />
-            <span>JSON</span>
-          </button>
+
 
           {/* Export / Download Quotations */}
           <button
@@ -518,7 +569,7 @@ export const Quotations = () => {
 
           {/* New Quotation */}
           <button
-            onClick={() => navigate('/quotations/new')}
+            onClick={() => setIsCustomerModalOpen(true)}
             className="btn btn-primary"
             style={{
               display: 'flex', alignItems: 'center', gap: '0.4rem',
@@ -685,7 +736,7 @@ export const Quotations = () => {
                   ? 'Try adjusting your search or filters.'
                   : 'No quotations found in this view.'}
               </p>
-              <button onClick={() => navigate('/quotations/new')} className="btn btn-primary">
+              <button onClick={() => setIsCustomerModalOpen(true)} className="btn btn-primary">
                 <Plus size={16} /><span>Create Quotation</span>
               </button>
             </div>
@@ -702,12 +753,10 @@ export const Quotations = () => {
         </div>
       )}
 
-      {/* JSON Inspector */}
-      <JsonInspectorModal
-        isOpen={isJsonModalOpen}
-        onClose={() => setIsJsonModalOpen(false)}
-        quotationData={displayedQuotations[0] || null}
-        title="DealFlow360 — Master Quotations JSON Inspector"
+      <CustomerSelectorModal 
+        isOpen={isCustomerModalOpen} 
+        onClose={() => setIsCustomerModalOpen(false)} 
+        onSelect={handleCreateNew} 
       />
     </div>
   );

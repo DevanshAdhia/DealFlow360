@@ -104,7 +104,7 @@ export const Products = () => {
       }
 
       return true;
-    });
+    }).sort((a, b) => b.unitPrice - a.unitPrice); // Sorted by priority/price
   }, [productsList, searchTerm, statusFilter, categoryFilter, typeFilter]);
 
   const handleCreateProduct = (e) => {

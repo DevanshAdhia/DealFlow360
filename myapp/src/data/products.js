@@ -84,6 +84,62 @@ export const MOCK_PRODUCTS = [
     minMargin: 30,
     gstRate: 18,
     isSubscription: false
+  },
+  {
+    id: 'PROD-007',
+    productCode: 'PRD-ANALYTICS-AI',
+    name: 'DealFlow AI Predictive Analytics Module',
+    category: 'Software Add-on',
+    description: 'Machine learning module for predictive deal health and win-rate forecasting.',
+    unitPrice: 8500,
+    costPrice: 2000,
+    unit: 'Module / Month',
+    defaultQty: 1,
+    minMargin: 60,
+    gstRate: 18,
+    isSubscription: true
+  },
+  {
+    id: 'PROD-008',
+    productCode: 'PRD-MIGRATE-ENT',
+    name: 'Enterprise Data Migration Service',
+    category: 'Professional Services',
+    description: 'White-glove migration of legacy CRM and ERP data into the DealFlow ecosystem.',
+    unitPrice: 350000,
+    costPrice: 180000,
+    unit: 'Project',
+    defaultQty: 1,
+    minMargin: 40,
+    gstRate: 18,
+    isSubscription: false
+  },
+  {
+    id: 'PROD-009',
+    productCode: 'PRD-TRAINING-PKG',
+    name: 'On-Site Team Enablement Training',
+    category: 'Professional Services',
+    description: '3-day on-site training bootcamp for sales reps and RevOps administrators.',
+    unitPrice: 120000,
+    costPrice: 40000,
+    unit: 'Bootcamp',
+    defaultQty: 1,
+    minMargin: 55,
+    gstRate: 18,
+    isSubscription: false
+  },
+  {
+    id: 'PROD-010',
+    productCode: 'PRD-SEC-AUDIT',
+    name: 'Annual Security & Compliance Audit',
+    category: 'Consulting',
+    description: 'Comprehensive annual security audit by certified professionals (SOC2, ISO27001 readiness).',
+    unitPrice: 250000,
+    costPrice: 150000,
+    unit: 'Audit',
+    defaultQty: 1,
+    minMargin: 35,
+    gstRate: 18,
+    isSubscription: false
   }
 ];
 

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../../utils/formatters.js';
 import { Badge, QuickStatusBadge, Button } from '../common/UI.jsx';
-import { JsonInspectorModal } from '../common/JsonInspectorModal.jsx';
 import { dataService } from '../../services/dataService.js';
 
 export const QuotationTable = ({ 
@@ -264,14 +263,7 @@ export const QuotationTable = ({
       </table>
 
       {/* Row-level Live JSON Inspector Modal */}
-      {inspectQuote && (
-        <JsonInspectorModal
-          isOpen={Boolean(inspectQuote)}
-          onClose={() => setInspectQuote(null)}
-          quotationData={inspectQuote}
-          title={`Quotation JSON: ${inspectQuote.quotationNumber || inspectQuote.id}`}
-        />
-      )}
+      
     </div>
   );
 };

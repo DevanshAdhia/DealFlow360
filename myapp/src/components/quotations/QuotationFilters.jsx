@@ -11,7 +11,7 @@ import {
   Building,
   Activity
 } from 'lucide-react';
-import CUSTOMERS_DATA from '../../data/customers.json';
+const CUSTOMERS_DATA = [];
 
 export const QuotationFilters = ({
   searchQuery,

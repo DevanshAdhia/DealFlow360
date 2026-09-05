@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowUpCircle, Zap, Plus, RefreshCw, X } from 'lucide-react';
-import PRODUCTS_DATA from '../../data/products.json';
+const PRODUCTS_DATA = [];
 import { getRecommendations, hydrateRecommendations } from '../../data/recommendationRules.js';
 import { formatINR } from '../../utils/formatters.js';
 

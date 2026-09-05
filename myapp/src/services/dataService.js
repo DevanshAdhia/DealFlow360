@@ -4,26 +4,28 @@
 // Never mutates imported JSON objects directly (always returns immutable deep copies).
 // All relationships are maintained strictly through foreign-key IDs.
 
-import ROLES_DATA from '../data/roles.json';
-import USERS_DATA from '../data/users.json';
-import CUSTOMER_TIERS_DATA from '../data/customerTiers.json';
-import CUSTOMERS_DATA from '../data/customers.json';
-import CATEGORIES_DATA from '../data/categories.json';
-import PRODUCTS_DATA from '../data/products.json';
-import PRICE_LISTS_DATA from '../data/priceLists.json';
-import PRICE_LIST_ITEMS_DATA from '../data/priceListItems.json';
-import DISCOUNT_RULES_DATA from '../data/discountRules.json';
-import APPROVAL_LEVELS_DATA from '../data/approvalLevels.json';
-import APPROVAL_RULES_DATA from '../data/approvalRules.json';
-import QUOTATIONS_DATA from '../data/quotations.json';
-import QUOTATION_ITEMS_DATA from '../data/quotationItems.json';
-import RECOMMENDATION_RULES_DATA from '../data/recommendationRules.json';
-import NEGOTIATION_REQUESTS_DATA from '../data/negotiationRequests.json';
-import FULFILLMENT_ORDERS_DATA from '../data/fulfillmentOrders.json';
-import WAREHOUSES_DATA from '../data/warehouses.json';
-import SUBSCRIPTIONS_DATA from '../data/subscriptions.json';
-
 // Utility helper for safe deep cloning without mutations
+
+import { DUMMY_CATEGORIES } from '../utils/dummyData.js';
+import { MOCK_CUSTOMERS } from '../data/customers.js';
+import { CUSTOMER_TIERS } from '../data/customerTiers.js';
+import { MOCK_USERS } from '../data/users.js';
+import { MOCK_PRODUCTS } from '../data/products.js';
+import { PRICE_LISTS, PRICE_LIST_ITEMS } from '../data/priceLists.js';
+import { INITIAL_QUOTATIONS } from '../data/quotations.js';
+import { INITIAL_FULFILLMENTS } from '../data/fulfillments.js';
+import { INITIAL_INVOICES } from '../data/invoices.js';
+import { INITIAL_SUBSCRIPTIONS } from '../data/subscriptions.js';
+import { APPROVAL_LEVELS, APPROVAL_RULES } from '../data/approvalRules.js';
+import { RECOMMENDATION_RULES } from '../data/recommendations.js';
+import { WAREHOUSES } from '../data/warehouses.js';
+
+const INITIAL_QUOTATION_ITEMS_FLAT = INITIAL_QUOTATIONS.flatMap(q => {
+  return (q.items || []).map(item => ({ ...item, quotationId: q.id }));
+});
+
+
+
 const deepClone = (data) => {
   if (typeof structuredClone === 'function') {
     return structuredClone(data);
@@ -31,27 +33,62 @@ const deepClone = (data) => {
   return JSON.parse(JSON.stringify(data));
 };
 
+// Seed LocalStorage helper
+const getOrSeedStorage = (key, seedData) => {
+  const localStorageKey = `dealflow_${key}`;
+  const existing = localStorage.getItem(localStorageKey);
+  
+  if (window.location.search.includes('reset=1')) {
+    localStorage.removeItem(localStorageKey);
+  }
+
+  if (existing && !window.location.search.includes('reset=1')) {
+    try {
+      const parsed = JSON.parse(existing);
+      
+      // Safety check: if seedData is an array, parsed MUST be an array. If not, consider it corrupted.
+      if (Array.isArray(seedData) && !Array.isArray(parsed)) {
+        throw new Error("Corrupted storage: expected array");
+      }
+      
+      // Auto-seed if empty OR if we have less data than the seed data (meaning they got the dummy data earlier)
+      if (Array.isArray(parsed) && Array.isArray(seedData) && parsed.length < seedData.length) {
+        console.warn(`Upgrading seed data for ${localStorageKey}`);
+        localStorage.setItem(localStorageKey, JSON.stringify(seedData));
+        return deepClone(seedData);
+      }
+      return parsed || seedData; // Fallback to seedData if parsed is falsy
+    } catch (e) {
+      console.warn(`Failed to parse ${localStorageKey} from localStorage. Falling back to seed data.`);
+    }
+  }
+  localStorage.setItem(localStorageKey, JSON.stringify(seedData));
+  return deepClone(seedData);
+};
+
 export const dataService = {
   // ─── MASTER RECORD LOOKUPS ──────────────────────────────────────────
 
-  getRoles: () => deepClone(ROLES_DATA),
-  getRoleById: (id) => deepClone(ROLES_DATA.find(r => r.id === id) || null),
+  getRoles: () => getOrSeedStorage('roles', []),
+  getRoleById: (id) => getOrSeedStorage('roles', []).find(r => r.id === id) || null,
 
-  getUsers: () => deepClone(USERS_DATA),
-  getUserById: (id) => deepClone(USERS_DATA.find(u => u.id === id) || null),
+  getUsers: () => getOrSeedStorage('users', MOCK_USERS),
+  getUserById: (id) => getOrSeedStorage('users', MOCK_USERS).find(u => u.id === id) || null,
 
-  getCustomerTiers: () => deepClone(CUSTOMER_TIERS_DATA),
-  getCustomerTierById: (id) => deepClone(CUSTOMER_TIERS_DATA.find(t => t.id === id) || CUSTOMER_TIERS_DATA[2]),
+  getCustomerTiers: () => getOrSeedStorage('customerTiers', CUSTOMER_TIERS),
+  getCustomerTierById: (id) => getOrSeedStorage('customerTiers', CUSTOMER_TIERS).find(t => t.id === id) || null,
 
-  getCustomers: () => deepClone(CUSTOMERS_DATA),
-  getCustomerById: (id) => deepClone(CUSTOMERS_DATA.find(c => c.id === id) || CUSTOMERS_DATA[0]),
+  getCustomers: () => getOrSeedStorage('customers', MOCK_CUSTOMERS),
+  getCustomerById: (id) => getOrSeedStorage('customers', MOCK_CUSTOMERS).find(c => c.id === id) || null,
 
-  getCategories: () => deepClone(CATEGORIES_DATA),
-  getCategoryById: (id) => deepClone(CATEGORIES_DATA.find(c => c.id === id) || null),
+  getCategories: () => getOrSeedStorage('categories', DUMMY_CATEGORIES),
+  getCategoryById: (id) => getOrSeedStorage('categories', DUMMY_CATEGORIES).find(c => c.id === id) || null,
 
   getProducts: () => {
-    return deepClone(PRODUCTS_DATA.map(p => {
-      const cat = CATEGORIES_DATA.find(c => c.id === p.categoryId);
+    const products = getOrSeedStorage('products', MOCK_PRODUCTS);
+    const categories = getOrSeedStorage('categories', DUMMY_CATEGORIES);
+    return products.map(p => {
+      const cat = categories.find(c => c.id === p.categoryId);
       const categoryName = cat?.name || 'Software';
       return {
         ...p,
@@ -59,12 +96,14 @@ export const dataService = {
         category: categoryName,
         categoryName
       };
-    }));
+    });
   },
   getProductById: (id) => {
-    const prod = PRODUCTS_DATA.find(p => p.id === id);
+    const products = getOrSeedStorage('products', MOCK_PRODUCTS);
+    const categories = getOrSeedStorage('categories', DUMMY_CATEGORIES);
+    const prod = products.find(p => p.id === id);
     if (!prod) return null;
-    const category = CATEGORIES_DATA.find(c => c.id === prod.categoryId);
+    const category = categories.find(c => c.id === prod.categoryId);
     const categoryName = category?.name || 'Software';
     return deepClone({
       ...prod,
@@ -74,15 +113,19 @@ export const dataService = {
     });
   },
 
-  getPriceLists: () => deepClone(PRICE_LISTS_DATA),
+  getPriceLists: () => getOrSeedStorage('priceLists', PRICE_LISTS),
   getPriceListForTier: (customerTierId) => {
-    return deepClone(PRICE_LISTS_DATA.find(pl => pl.customerTierId === customerTierId) || PRICE_LISTS_DATA[2]);
+    const priceLists = getOrSeedStorage('priceLists', PRICE_LISTS);
+    return priceLists.find(pl => pl.customerTierId === customerTierId) || null;
   },
 
-  getPriceListItems: () => deepClone(PRICE_LIST_ITEMS_DATA),
+  getPriceListItems: () => getOrSeedStorage('priceListItems', PRICE_LIST_ITEMS),
   getProductPriceInTier: (productId, basePrice, customerTierId) => {
-    const priceList = PRICE_LISTS_DATA.find(pl => pl.customerTierId === customerTierId) || PRICE_LISTS_DATA[2];
-    const customItem = PRICE_LIST_ITEMS_DATA.find(
+    const priceLists = getOrSeedStorage('priceLists', PRICE_LISTS);
+    const priceListItems = getOrSeedStorage('priceListItems', PRICE_LIST_ITEMS);
+    
+    const priceList = priceLists.find(pl => pl.customerTierId === customerTierId) || { multiplier: 1 };
+    const customItem = priceListItems.find(
       pli => pli.priceListId === priceList.id && pli.productId === productId
     );
     if (customItem && customItem.customPrice) {
@@ -91,20 +134,20 @@ export const dataService = {
     return Math.round(basePrice * (priceList.multiplier || 1.0));
   },
 
-  getDiscountRules: () => deepClone(DISCOUNT_RULES_DATA),
+  getDiscountRules: () => getOrSeedStorage('discountRules', []),
   getDiscountRule: (customerTierId, categoryId) => {
-    return deepClone(DISCOUNT_RULES_DATA.find(
+    return getOrSeedStorage('discountRules', []).find(
       dr => dr.customerTierId === customerTierId && dr.categoryId === categoryId
-    ) || null);
+    ) || null;
   },
 
-  getApprovalLevels: () => deepClone(APPROVAL_LEVELS_DATA),
-  getApprovalRules: () => deepClone(APPROVAL_RULES_DATA),
-  getRecommendationRules: () => deepClone(RECOMMENDATION_RULES_DATA),
-  getWarehouses: () => deepClone(WAREHOUSES_DATA),
-  getFulfillmentOrders: () => deepClone(FULFILLMENT_ORDERS_DATA),
-  getSubscriptions: () => deepClone(SUBSCRIPTIONS_DATA),
-  getNegotiationRequests: () => deepClone(NEGOTIATION_REQUESTS_DATA),
+  getApprovalLevels: () => getOrSeedStorage('approvalLevels', APPROVAL_LEVELS),
+  getApprovalRules: () => getOrSeedStorage('approvalRules', APPROVAL_RULES),
+  getRecommendationRules: () => getOrSeedStorage('recommendationRules', RECOMMENDATION_RULES),
+  getWarehouses: () => getOrSeedStorage('warehouses', WAREHOUSES),
+  getFulfillmentOrders: () => getOrSeedStorage('fulfillmentOrders', INITIAL_FULFILLMENTS),
+  getSubscriptions: () => getOrSeedStorage('subscriptions', INITIAL_SUBSCRIPTIONS),
+  getNegotiationRequests: () => getOrSeedStorage('negotiationRequests', []),
 
   // ─── RELATIONAL FOREIGN-KEY HYDRATION ───────────────────────────────
 
@@ -118,20 +161,26 @@ export const dataService = {
    * customer.customerTierId → customerTiers.id
    * customerTier.priceListId → priceLists.id
    */
-  hydrateQuotation: (rawQuote, allItems = QUOTATION_ITEMS_DATA) => {
+  hydrateQuotation: (rawQuote, allItems = []) => {
     const q = deepClone(rawQuote);
 
     // 1. Resolve Customer & Customer Tier
-    const customer = CUSTOMERS_DATA.find(c => c.id === q.customerId) || CUSTOMERS_DATA[0];
-    const customerTier = CUSTOMER_TIERS_DATA.find(t => t.id === customer.customerTierId) || CUSTOMER_TIERS_DATA[2];
+    const customers = dataService.getCustomers();
+    const customerTiers = dataService.getCustomerTiers();
+    const customer = customers.find(c => c.id === q.customerId) || {};
+    const customerTier = customerTiers.find(t => t.id === customer.customerTierId) || {};
 
     // 2. Resolve Sales Rep
-    const salesRep = USERS_DATA.find(u => u.id === q.salesRepId) || USERS_DATA[0];
+    const users = dataService.getUsers();
+    const salesRep = users.find(u => u.id === q.salesRepId) || {};
 
     // 3. Resolve Line Items & Products
+    const products = getOrSeedStorage('products', MOCK_PRODUCTS);
+    const categories = getOrSeedStorage('categories', DUMMY_CATEGORIES);
+    
     const itemsForQuote = (allItems.filter(it => it.quotationId === q.id) || []).map(it => {
-      const product = PRODUCTS_DATA.find(p => p.id === it.productId) || PRODUCTS_DATA[0];
-      const category = CATEGORIES_DATA.find(c => c.id === product.categoryId);
+      const product = products.find(p => p.id === it.productId) || {};
+      const category = categories.find(c => c.id === product.categoryId);
 
       return {
         ...it,
@@ -152,14 +201,18 @@ export const dataService = {
     });
 
     // 4. Resolve Negotiation Details
-    const negotiation = NEGOTIATION_REQUESTS_DATA.find(n => n.quotationId === q.id) || null;
+    const negotiations = getOrSeedStorage('negotiationRequests', []);
+    const negotiation = negotiations.find(n => n.quotationId === q.id) || null;
 
     // 5. Resolve Fulfillment Details
-    const fulfillment = FULFILLMENT_ORDERS_DATA.find(f => f.quotationId === q.id) || null;
-    const warehouse = fulfillment ? WAREHOUSES_DATA.find(w => w.id === fulfillment.warehouseId) : null;
+    const fulfillments = getOrSeedStorage('fulfillmentOrders', INITIAL_FULFILLMENTS);
+    const warehouses = getOrSeedStorage('warehouses', WAREHOUSES);
+    const fulfillment = fulfillments.find(f => f.quotationId === q.id) || null;
+    const warehouse = fulfillment ? warehouses.find(w => w.id === fulfillment.warehouseId) : null;
 
     // 6. Resolve Subscription Details
-    const subscription = SUBSCRIPTIONS_DATA.find(s => s.quotationId === q.id) || null;
+    const subscriptions = getOrSeedStorage('subscriptions', INITIAL_SUBSCRIPTIONS);
+    const subscription = subscriptions.find(s => s.quotationId === q.id) || null;
 
     return {
       ...q,
@@ -197,10 +250,12 @@ export const dataService = {
   },
 
   /**
-   * Initializes initial in-memory React state from src/data/*.json
+   * Initializes initial in-memory React state from src/data/*.json or localStorage
    */
   getInitialQuotations: () => {
-    return QUOTATIONS_DATA.map(q => dataService.hydrateQuotation(q, QUOTATION_ITEMS_DATA));
+    const quotations = getOrSeedStorage('quotations', INITIAL_QUOTATIONS);
+    const quotationItems = getOrSeedStorage('quotationItems', INITIAL_QUOTATION_ITEMS_FLAT);
+    return quotations.map(q => dataService.hydrateQuotation(q, quotationItems));
   },
 
   /**
@@ -213,12 +268,16 @@ export const dataService = {
       return m ? parseInt(m, 10) : 1000;
     });
     const nextNum = Math.max(...nums, 1004) + 1;
-    const newId = `QID-${String(nextNum).padStart(3, '0')}`;
-    const newNumber = `Q-${nextNum}`;
+    const newId = newFormData.id || `QID-${String(nextNum).padStart(3, '0')}`;
+    const newNumber = newFormData.quotationNumber || `Q-${nextNum}`;
 
-    const customer = CUSTOMERS_DATA.find(c => c.id === newFormData.customerId) || CUSTOMERS_DATA[0];
-    const customerTier = CUSTOMER_TIERS_DATA.find(t => t.id === (newFormData.customerTierId || customer.customerTierId)) || CUSTOMER_TIERS_DATA[2];
-    const salesRep = USERS_DATA.find(u => u.id === (newFormData.salesRepId || 'USR-001')) || USERS_DATA[0];
+    const customers = dataService.getCustomers();
+    const customerTiers = dataService.getCustomerTiers();
+    const users = dataService.getUsers();
+
+    const customer = customers.find(c => c.id === newFormData.customerId) || {};
+    const customerTier = customerTiers.find(t => t.id === (newFormData.customerTierId || customer.customerTierId)) || {};
+    const salesRep = users.find(u => u.id === (newFormData.salesRepId || 'USR-001')) || {};
 
     const now = new Date().toISOString();
 

@@ -50,8 +50,15 @@ const quotationReducer = (state, action) => {
 const QuotationContext = createContext(null);
 
 export const QuotationProvider = ({ children }) => {
-  // Pure React state manages runtime modifications — NO localStorage
+  // Pure React state manages runtime modifications, synced to localStorage
   const [allQuotations, dispatch] = useReducer(quotationReducer, null, loadInitialState);
+
+  // Sync to localStorage on change
+  React.useEffect(() => {
+    if (allQuotations) {
+      localStorage.setItem('dealflow_quotations', JSON.stringify(allQuotations));
+    }
+  }, [allQuotations]);
 
   // Active / archived views
   const quotations = allQuotations.filter((q) => !q.isArchived);
@@ -75,8 +82,19 @@ export const QuotationProvider = ({ children }) => {
     const tier = formData.customerTierId ? getCustomerTierById(formData.customerTierId) : null;
     const approvalEval = evaluateQuotationApproval({ ...formData, ...totals }, tier);
 
+    
+    const nums = allQuotations.map(q => {
+      const m = (q.quotationNumber || '').replace(/[^0-9]/g, '');
+      return m ? parseInt(m, 10) : 1000;
+    });
+    const nextNum = Math.max(...nums, 1004) + 1;
+    const newId = `QID-${String(nextNum).padStart(3, '0')}`;
+    const newNumber = `Q-${nextNum}`;
+
     const payload = {
       ...formData,
+      id: newId,
+      quotationNumber: newNumber,
       stage,
       status: stageToStatus(stage),
       health: formData.health || health,

@@ -38,7 +38,6 @@ import { useFulfillment } from '../context/FulfillmentContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { formatINR } from '../utils/formatters.js';
 import { Button, Badge } from '../components/common/UI.jsx';
-import { JsonInspectorModal } from '../components/common/JsonInspectorModal.jsx';
 import { dataService } from '../services/dataService.js';
 import { getRecommendationsForCart } from '../data/recommendations.js';
 
@@ -64,8 +63,7 @@ export const QuotationDetail = () => {
   const fulfillment = quote ? getFulfillmentByQuotationId(quote.quotationNumber || quote.id) : null;
 
   // JSON Inspector Modal state
-  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
-
+  
   // Negotiation Counter Modal / Input state
   const [counterDiscount, setCounterDiscount] = useState(quote?.negotiationDetails?.requestedDiscount || 10);
   const [isNegotiationOpen, setIsNegotiationOpen] = useState(false);
@@ -298,26 +296,7 @@ export const QuotationDetail = () => {
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           {/* Prominent Live JSON Inspector Button */}
-          <button
-            onClick={() => setIsJsonModalOpen(true)}
-            className="btn"
-            style={{
-              backgroundColor: 'rgba(79, 70, 229, 0.08)',
-              color: '#4F46E5',
-              border: '1px solid rgba(79, 70, 229, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontWeight: '700',
-              fontSize: '0.8125rem',
-              padding: '0.55rem 0.95rem',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer'
-            }}
-          >
-            <Code size={15} />
-            <span>{'{ }'} View Raw JSON</span>
-          </button>
+          
 
           {/* Direct Download Quotation Button */}
           <button
@@ -940,12 +919,7 @@ export const QuotationDetail = () => {
       </div>
 
       {/* 4. Live JSON Inspector Modal */}
-      <JsonInspectorModal
-        isOpen={isJsonModalOpen}
-        onClose={() => setIsJsonModalOpen(false)}
-        quotationData={quote}
-        title={`Live Quotation Entity: ${quote.quotationNumber || quote.id}`}
-      />
+      
 
       {/* 5. Negotiation Counter-Offer Mini Modal */}
       {isNegotiationOpen && (

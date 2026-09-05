@@ -1,15 +1,15 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 
 // Seed data imported from JSON files
-import WAREHOUSES_DATA from '../data/warehouses.json';
-import INVENTORY_DATA from '../data/inventory.json';
-import ORDERS_DATA from '../data/orders.json';
-import ORDER_ITEMS_DATA from '../data/orderItems.json';
-import FULFILLMENT_ORDERS_DATA from '../data/fulfillmentOrders.json';
-import FULFILLMENT_ITEMS_DATA from '../data/fulfillmentItems.json';
-import BACKORDERS_DATA from '../data/backorders.json';
-import PRODUCTS_DATA from '../data/products.json';
-import CUSTOMERS_DATA from '../data/customers.json';
+const WAREHOUSES_DATA = [];
+const INVENTORY_DATA = [];
+const ORDERS_DATA = [];
+const ORDER_ITEMS_DATA = [];
+const FULFILLMENT_ORDERS_DATA = [];
+const FULFILLMENT_ITEMS_DATA = [];
+const BACKORDERS_DATA = [];
+const PRODUCTS_DATA = [];
+const CUSTOMERS_DATA = [];
 
 import {
   calculateSuggestedSplit,
@@ -23,18 +23,28 @@ import { getOrdersAwaitingFulfillment } from '../services/orderService.js';
 
 const FulfillmentContext = createContext();
 
+const getOrSeed = (key, seedData) => {
+  const lsKey = `dealflow_${key}`;
+  const existing = localStorage.getItem(lsKey);
+  if (existing) {
+    try { return JSON.parse(existing); } catch(e) {}
+  }
+  localStorage.setItem(lsKey, JSON.stringify(seedData));
+  return JSON.parse(JSON.stringify(seedData));
+};
+
 export const FulfillmentProvider = ({ children }) => {
-  // Pure React state for all fulfillment entities (NO localStorage)
-  const [warehouses, setWarehouses] = useState(WAREHOUSES_DATA);
-  const [inventory, setInventory] = useState(INVENTORY_DATA);
-  const [orders, setOrders] = useState(ORDERS_DATA);
-  const [orderItems, setOrderItems] = useState(ORDER_ITEMS_DATA);
-  const [fulfillmentOrders, setFulfillmentOrders] = useState(FULFILLMENT_ORDERS_DATA);
-  const [fulfillmentItems, setFulfillmentItems] = useState(FULFILLMENT_ITEMS_DATA);
-  const [backorders, setBackorders] = useState(BACKORDERS_DATA);
-  const [products, setProducts] = useState(PRODUCTS_DATA);
-  const [customers, setCustomers] = useState(CUSTOMERS_DATA);
-  const [auditLogs, setAuditLogs] = useState([
+  // Pure React state for all fulfillment entities, synced to localStorage
+  const [warehouses, setWarehouses] = useState(() => getOrSeed('warehouses_state', WAREHOUSES_DATA));
+  const [inventory, setInventory] = useState(() => getOrSeed('inventory_state', INVENTORY_DATA));
+  const [orders, setOrders] = useState(() => getOrSeed('orders_state', ORDERS_DATA));
+  const [orderItems, setOrderItems] = useState(() => getOrSeed('orderItems_state', ORDER_ITEMS_DATA));
+  const [fulfillmentOrders, setFulfillmentOrders] = useState(() => getOrSeed('fulfillmentOrders_state', FULFILLMENT_ORDERS_DATA));
+  const [fulfillmentItems, setFulfillmentItems] = useState(() => getOrSeed('fulfillmentItems_state', FULFILLMENT_ITEMS_DATA));
+  const [backorders, setBackorders] = useState(() => getOrSeed('backorders_state', BACKORDERS_DATA));
+  const [products, setProducts] = useState(() => getOrSeed('products_state', PRODUCTS_DATA));
+  const [customers, setCustomers] = useState(() => getOrSeed('customers_state', CUSTOMERS_DATA));
+  const [auditLogs, setAuditLogs] = useState(() => getOrSeed('auditLogs_state', [
     {
       id: 'AUD-INIT-1',
       entityType: 'Fulfillment',
@@ -44,7 +54,19 @@ export const FulfillmentProvider = ({ children }) => {
       actor: 'System',
       timestamp: '2026-09-05T09:30:00Z'
     }
-  ]);
+  ]));
+
+  // Sync to localStorage
+  React.useEffect(() => { localStorage.setItem('dealflow_warehouses_state', JSON.stringify(warehouses)); }, [warehouses]);
+  React.useEffect(() => { localStorage.setItem('dealflow_inventory_state', JSON.stringify(inventory)); }, [inventory]);
+  React.useEffect(() => { localStorage.setItem('dealflow_orders_state', JSON.stringify(orders)); }, [orders]);
+  React.useEffect(() => { localStorage.setItem('dealflow_orderItems_state', JSON.stringify(orderItems)); }, [orderItems]);
+  React.useEffect(() => { localStorage.setItem('dealflow_fulfillmentOrders_state', JSON.stringify(fulfillmentOrders)); }, [fulfillmentOrders]);
+  React.useEffect(() => { localStorage.setItem('dealflow_fulfillmentItems_state', JSON.stringify(fulfillmentItems)); }, [fulfillmentItems]);
+  React.useEffect(() => { localStorage.setItem('dealflow_backorders_state', JSON.stringify(backorders)); }, [backorders]);
+  React.useEffect(() => { localStorage.setItem('dealflow_products_state', JSON.stringify(products)); }, [products]);
+  React.useEffect(() => { localStorage.setItem('dealflow_customers_state', JSON.stringify(customers)); }, [customers]);
+  React.useEffect(() => { localStorage.setItem('dealflow_auditLogs_state', JSON.stringify(auditLogs)); }, [auditLogs]);
 
   // Backward compatibility fulfillments array for DealHealth, Dashboard, Reports
   const fulfillments = useMemo(() => {

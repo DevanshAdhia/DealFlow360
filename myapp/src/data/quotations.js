@@ -28,7 +28,7 @@ export const INITIAL_QUOTATIONS = [
     totalCost: 1100000,
     grossProfit: 592800,
     margin: 35.0, // 35% margin
-    createdAt: '2026-09-04T08:30:00Z',
+    createdAt: '2026-02-15T08:30:00Z',
     updatedAt: '2026-09-05T09:15:00Z',
     validUntil: '2026-09-25',
     paymentTerms: 'Net 45',
@@ -135,7 +135,7 @@ export const INITIAL_QUOTATIONS = [
     totalCost: 890000,
     grossProfit: 241000,
     margin: 21.3, // 21.3% margin (< 25% minimum threshold)
-    createdAt: '2026-09-04T10:00:00Z',
+    createdAt: '2026-05-10T10:00:00Z',
     updatedAt: '2026-09-05T07:45:00Z',
     validUntil: '2026-09-18',
     paymentTerms: 'Net 30',
@@ -240,7 +240,7 @@ export const INITIAL_QUOTATIONS = [
     totalCost: 1020000,
     grossProfit: 915000,
     margin: 47.3,
-    createdAt: '2026-09-01T09:00:00Z',
+    createdAt: '2026-08-01T09:00:00Z',
     updatedAt: '2026-09-03T16:00:00Z',
     validUntil: '2026-10-01',
     paymentTerms: 'Net 45',

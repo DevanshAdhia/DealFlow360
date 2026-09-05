@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/layout/Sidebar.jsx';
-import { AppNavigation } from '../components/layout/AppNavigation.jsx';
+
 import { ToastContainer } from '../components/ui/ToastContainer.jsx';
 
 export const DashboardLayout = ({ children }) => {
@@ -23,10 +23,6 @@ export const DashboardLayout = ({ children }) => {
         style={styles.mainWrapper} 
         className="main-content-area"
       >
-        <AppNavigation 
-          onMobileToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} 
-        />
-
         <main style={styles.mainContent}>
           {children || <Outlet />}
         </main>

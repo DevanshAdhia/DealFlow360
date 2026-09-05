@@ -77,7 +77,7 @@ export const calculatePipelineValue = (quotations = [], filters = {}) => {
   const filtered = filterDataset(quotations, filters, 'createdAt');
   return filtered
     .filter(q => !q.isArchived && q.stage !== 'confirmed')
-    .reduce((sum, q) => sum + (Number(q.total) || 0), 0);
+    .reduce((sum, q) => sum + ((Number(q.pricing?.total) || Number(q.total)) || 0), 0);
 };
 
 // Confirmed Deals Count & Total Confirmed Value
@@ -85,7 +85,7 @@ export const calculateConfirmedDeals = (quotations = [], filters = {}) => {
   const filtered = filterDataset(quotations, filters, 'createdAt');
   const confirmed = filtered.filter(q => !q.isArchived && q.stage === 'confirmed');
   const count = confirmed.length;
-  const value = confirmed.reduce((sum, q) => sum + (Number(q.total) || 0), 0);
+  const value = confirmed.reduce((sum, q) => sum + ((Number(q.pricing?.total) || Number(q.total)) || 0), 0);
   return { count, value };
 };
 
@@ -103,7 +103,7 @@ export const calculateAverageDealValue = (quotations = [], filters = {}) => {
   const confirmed = filtered.filter(q => q.stage === 'confirmed');
   const targetPool = confirmed.length > 0 ? confirmed : filtered;
   if (targetPool.length === 0) return 0;
-  const total = targetPool.reduce((sum, q) => sum + (Number(q.total) || 0), 0);
+  const total = targetPool.reduce((sum, q) => sum + ((Number(q.pricing?.total) || Number(q.total)) || 0), 0);
   return Math.round(total / targetPool.length);
 };
 
@@ -220,7 +220,7 @@ export const getPipelineByStage = (quotations = [], filters = {}) => {
   filtered.forEach(q => {
     const label = q.status || (q.stage ? q.stage.replace('_', ' ') : 'Draft');
     const key = Object.keys(stages).find(k => k.toLowerCase() === label.toLowerCase()) || 'Draft';
-    stages[key].value += (Number(q.total) || 0);
+    stages[key].value += ((Number(q.pricing?.total) || Number(q.total)) || 0);
     stages[key].count += 1;
   });
 
@@ -258,9 +258,9 @@ export const getSalesRepPerformance = (quotations = [], invoices = [], filters =
     reps[rep].dealsCount += 1;
     if (q.stage === 'confirmed') {
       reps[rep].wonCount += 1;
-      reps[rep].confirmedRevenue += (Number(q.total) || 0);
+      reps[rep].confirmedRevenue += ((Number(q.pricing?.total) || Number(q.total)) || 0);
     } else {
-      reps[rep].pipeline += (Number(q.total) || 0);
+      reps[rep].pipeline += ((Number(q.pricing?.total) || Number(q.total)) || 0);
     }
   });
 
@@ -526,9 +526,9 @@ export const calculateCustomerAnalytics = (quotations = [], invoices = [], filte
     customers[cust].totalDeals += 1;
     if (q.stage === 'confirmed') {
       customers[cust].confirmedDeals += 1;
-      customers[cust].confirmedValue += (Number(q.total) || 0);
+      customers[cust].confirmedValue += ((Number(q.pricing?.total) || Number(q.total)) || 0);
     } else {
-      customers[cust].pipelineValue += (Number(q.total) || 0);
+      customers[cust].pipelineValue += ((Number(q.pricing?.total) || Number(q.total)) || 0);
     }
   });
 

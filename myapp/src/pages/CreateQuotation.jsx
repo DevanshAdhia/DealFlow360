@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -25,7 +25,6 @@ import { useAuth } from '../hooks/useAuth.js';
 import { CustomerSelector } from '../components/quotations/CustomerSelector.jsx';
 import { dataService } from '../services/dataService.js';
 import { formatINR } from '../utils/formatters.js';
-import { JsonInspectorModal } from '../components/common/JsonInspectorModal.jsx';
 import { calculateQuotationTotals } from '../utils/quotationCalculations.js';
 
 export const CreateQuotation = () => {
@@ -37,11 +36,19 @@ export const CreateQuotation = () => {
   const allProducts = useMemo(() => dataService.getProducts(), []);
   const allCustomers = useMemo(() => dataService.getCustomers(), []);
 
+  const location = useLocation();
+  const preSelectedCustomerId = location.state?.preSelectedCustomerId;
+
   // Wizard Step State (1: Customer Selection, 2: Line Items & Pricing, 3: Review & Commit)
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(preSelectedCustomerId ? 2 : 1);
 
   // Active Customer & Dynamic Tier
-  const [selectedCustomer, setSelectedCustomer] = useState(allCustomers[0]);
+  const [selectedCustomer, setSelectedCustomer] = useState(() => {
+    if (preSelectedCustomerId) {
+      return allCustomers.find(c => c.id === preSelectedCustomerId) || allCustomers[0];
+    }
+    return allCustomers[0];
+  });
   const customerTier = useMemo(() => {
     return dataService.getCustomerTierById(selectedCustomer?.customerTierId);
   }, [selectedCustomer]);
@@ -63,6 +70,7 @@ export const CreateQuotation = () => {
   // Line Items State — initialize with first product with tier-adjusted pricing
   const [items, setItems] = useState(() => {
     const p1 = dataService.getProducts()[0];
+    if (!p1) return [];
     const initialPrice = dataService.getProductPriceInTier(p1.id, p1.unitPrice, allCustomers[0]?.customerTierId);
     return [
       {
@@ -117,30 +125,29 @@ export const CreateQuotation = () => {
   const requiresApproval = isDiscountOverTier || isMarginLow;
 
   // JSON Inspector Modal state
-  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
-
+  
   // Live draft quotation JSON payload for inspection
   const draftQuotationPayload = useMemo(() => {
     return {
       draftMode: true,
       quotationNumber: "Q-AUTO (Generated on save)",
-      customer: {
+      customer: selectedCustomer ? {
         id: selectedCustomer.id,
         customerCode: selectedCustomer.customerCode,
         companyName: selectedCustomer.companyName,
         contactName: selectedCustomer.contactName,
         email: selectedCustomer.email,
-        customerTierId: customerTier.id,
-        tierName: customerTier.name
-      },
+        customerTierId: customerTier?.id,
+        tierName: customerTier?.name
+      } : null,
       pricingAndGovernance: {
-        priceListId: customerTier.priceListId,
-        tierDiscountLimit: customerTier.maxRepDiscount,
+        priceListId: customerTier?.priceListId,
+        tierDiscountLimit: customerTier?.maxRepDiscount,
         requestedDiscount: discount,
         requiresApproval,
         approvalReason: requiresApproval 
           ? isDiscountOverTier 
-            ? `Discount (${discount}%) exceeds ${customerTier.name} limit (${customerTier.maxRepDiscount}%)`
+            ? `Discount (${discount}%) exceeds ${customerTier?.name || 'tier'} limit (${customerTier?.maxRepDiscount || 0}%)`
             : `Deal margin (${totals.margin}%) below 25% minimum threshold`
           : "Within representative authority"
       },
@@ -167,7 +174,8 @@ export const CreateQuotation = () => {
 
   const handleAddItem = (productId) => {
     const prod = allProducts.find(p => p.id === productId) || allProducts[0];
-    const unitPrice = dataService.getProductPriceInTier(prod.id, prod.unitPrice, customerTier.id);
+    if (!prod) return;
+    const unitPrice = dataService.getProductPriceInTier(prod.id, prod.unitPrice, customerTier?.id);
 
     setItems(prev => [
       ...prev,
@@ -217,8 +225,8 @@ export const CreateQuotation = () => {
 
     const newQuote = addQuotation({
       customerId: selectedCustomer.id,
-      customerCode: selectedCustomer.customerCode,
-      customerTierId: customerTier.id,
+      customerCode: selectedCustomer.customerCode || 'NEW',
+      customerTierId: customerTier?.id,
       customerName: selectedCustomer.companyName,
       contactPerson: selectedCustomer.contactName,
       contactEmail: selectedCustomer.email,
@@ -539,8 +547,11 @@ export const CreateQuotation = () => {
                           <input
                             type="number"
                             min="1"
-                            value={item.quantity}
-                            onChange={(e) => handleUpdateItem(item.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                            value={item.quantity || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              handleUpdateItem(item.id, 'quantity', val === '' ? '' : parseInt(val, 10));
+                            }}
                             className="input"
                             style={{ padding: '0.35rem 0.5rem', width: '70px', fontSize: '0.8125rem', textAlign: 'center' }}
                           />
@@ -624,8 +635,8 @@ export const CreateQuotation = () => {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="input"
-                  rows={2}
-                  style={{ width: '100%', marginTop: '4px', fontSize: '0.8125rem' }}
+                  rows={4}
+                  style={{ width: '100%', marginTop: '4px', fontSize: '0.8125rem', minHeight: '90px', padding: '0.75rem' }}
                 />
               </div>
             </div>
@@ -855,12 +866,7 @@ export const CreateQuotation = () => {
       )}
 
       {/* 4. Live JSON Inspector Modal */}
-      <JsonInspectorModal
-        isOpen={isJsonModalOpen}
-        onClose={() => setIsJsonModalOpen(false)}
-        quotationData={draftQuotationPayload}
-        title="Live Quotation Construction Payload"
-      />
+      
     </div>
   );
 };

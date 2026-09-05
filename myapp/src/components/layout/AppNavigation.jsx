@@ -13,7 +13,6 @@ import { HoverSubmenu } from './HoverSubmenu.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useToast } from '../../hooks/useToast.js';
 import { NotificationModal } from './NotificationModal.jsx';
-import { JsonInspectorModal } from '../common/JsonInspectorModal.jsx';
 
 export const AppNavigation = ({ onMobileToggle }) => {
   const location = useLocation();
@@ -23,8 +22,7 @@ export const AppNavigation = ({ onMobileToggle }) => {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
-  const [showJsonModal, setShowJsonModal] = useState(false);
-
+  
   const activeUser = user || {
     name: 'Alex Morgan',
     email: 'sales@dealflow360.demo',
@@ -257,12 +255,7 @@ export const AppNavigation = ({ onMobileToggle }) => {
       </div>
 
       {/* Live JSON Inspector Modal */}
-      {showJsonModal && (
-        <JsonInspectorModal 
-          isOpen={showJsonModal} 
-          onClose={() => setShowJsonModal(false)} 
-        />
-      )}
+      
     </header>
   );
 };

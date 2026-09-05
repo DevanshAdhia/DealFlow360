@@ -47,7 +47,7 @@ import {
   calculateDiscountAnalytics
 } from '../utils/analyticsUtils.js';
 
-import PRODUCTS_DATA from '../data/products.json';
+const PRODUCTS_DATA = [];
 import { WAREHOUSES } from '../data/warehouses.js';
 
 // Reusable Components

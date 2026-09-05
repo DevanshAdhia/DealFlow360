@@ -47,7 +47,7 @@ import {
   calculateDiscountAnalytics
 } from '../utils/analyticsUtils.js';
 
-import PRODUCTS_DATA from '../data/products.json';
+import { MOCK_PRODUCTS as PRODUCTS_DATA } from '../data/products.js';
 import { WAREHOUSES } from '../data/warehouses.js';
 
 // Visual Tabs / Specialized Views for Reports
@@ -75,25 +75,42 @@ export const ReportDetail = () => {
 
   const reportConfig = REPORT_DEFINITIONS.find(r => r.id === targetId);
 
-  // Filtered Quotations
-  const filteredQuotations = useMemo(() => {
-    if (dateRange === 'ALL') return quotations;
-    // Simple filter mock for demonstration
-    return quotations;
-  }, [quotations, dateRange]);
+  // Advanced Filtering
+  const filterByDateRange = (items, dateField) => {
+    if (dateRange === 'ALL') return items;
+    
+    const now = new Date('2026-09-06T12:00:00Z'); // Fixed reference point to match mock data
+    return items.filter(item => {
+      const rawDate = item[dateField];
+      if (!rawDate) return true;
+      const itemDate = new Date(rawDate);
+      const diffDays = Math.floor((now.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dateRange === 'Q2_2026') return itemDate.getFullYear() === 2026 && itemDate.getMonth() >= 3 && itemDate.getMonth() <= 5;
+      if (dateRange === 'Q3_2026') return itemDate.getFullYear() === 2026 && itemDate.getMonth() >= 6 && itemDate.getMonth() <= 8;
+      if (dateRange === 'LAST_7_DAYS') return diffDays >= 0 && diffDays <= 7;
+      if (dateRange === 'LAST_30_DAYS') return diffDays >= 0 && diffDays <= 30;
+      if (dateRange === 'YEAR_TO_DATE') return itemDate.getFullYear() === now.getFullYear();
+      
+      return true;
+    });
+  };
+
+  const filteredQuotations = useMemo(() => filterByDateRange(quotations, 'createdAt'), [quotations, dateRange]);
+  const filteredInvoices = useMemo(() => filterByDateRange(invoices, 'issueDate'), [invoices, dateRange]);
 
   // Calculations
-  const revenue = useMemo(() => calculateRevenue(filteredQuotations), [filteredQuotations]);
+  const revenue = useMemo(() => calculateRevenue(filteredInvoices), [filteredInvoices]);
   const pipelineValue = useMemo(() => calculatePipelineValue(filteredQuotations), [filteredQuotations]);
   const confirmedDeals = useMemo(() => calculateConfirmedDeals(filteredQuotations), [filteredQuotations]);
   const conversionRate = useMemo(() => calculateConversionRate(filteredQuotations), [filteredQuotations]);
   const avgDealValue = useMemo(() => calculateAverageDealValue(filteredQuotations), [filteredQuotations]);
   const mrr = useMemo(() => calculateMRR(filteredQuotations), [filteredQuotations]);
 
-  const revenueTrend = useMemo(() => getRevenueTrend(filteredQuotations), [filteredQuotations]);
+  const revenueTrend = useMemo(() => getRevenueTrend(filteredInvoices), [filteredInvoices]);
   const pipelineStages = useMemo(() => getPipelineByStage(filteredQuotations), [filteredQuotations]);
   const dealsByStatus = useMemo(() => getDealsByStatus(filteredQuotations), [filteredQuotations]);
-  const repPerformance = useMemo(() => getSalesRepPerformance(filteredQuotations), [filteredQuotations]);
+  const repPerformance = useMemo(() => getSalesRepPerformance(filteredQuotations, filteredInvoices), [filteredQuotations, filteredInvoices]);
   const dealHealthAnalytics = useMemo(() => getDealHealthAnalytics(filteredQuotations), [filteredQuotations]);
   const approvalAnalytics = useMemo(() => getApprovalAnalytics(approvalRequests), [approvalRequests]);
   const fulfillmentAnalytics = useMemo(() => getFulfillmentAnalytics(fulfillmentOrders), [fulfillmentOrders]);
@@ -110,7 +127,7 @@ export const ReportDetail = () => {
           title="Report Not Found"
           message={`No analytical report could be found for identifier "${targetId}". Please select an available report from the catalog.`}
           backButton={{
-            label: '← Back to Reports',
+            label: 'Back to Reports',
             path: '/sales/reports'
           }}
         />
@@ -161,9 +178,9 @@ export const ReportDetail = () => {
             avgDealValue={avgDealValue}
             mrr={mrr}
             revenueTrend={revenueTrend}
-            pipelineStages={pipelineStages}
+            pipelineByStage={pipelineStages}
             dealsByStatus={dealsByStatus}
-            repPerformance={repPerformance}
+            salesRepPerformance={repPerformance}
             filteredQuotations={filteredQuotations}
           />
         );
@@ -209,9 +226,9 @@ export const ReportDetail = () => {
             avgDealValue={avgDealValue}
             mrr={mrr}
             revenueTrend={revenueTrend}
-            pipelineStages={pipelineStages}
+            pipelineByStage={pipelineStages}
             dealsByStatus={dealsByStatus}
-            repPerformance={repPerformance}
+            salesRepPerformance={repPerformance}
             filteredQuotations={filteredQuotations}
           />
         );
@@ -243,7 +260,7 @@ export const ReportDetail = () => {
           { label: reportConfig.name, path: `/sales/reports/${reportConfig.id}` }
         ]}
         backButton={{
-          label: '← Back to Reports',
+          label: 'Back to Reports',
           path: '/sales/reports'
         }}
         actions={
@@ -312,7 +329,7 @@ export const ReportDetail = () => {
           <Calendar size={16} color="#64748b" />
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>Period Scope:</span>
           <div style={{ display: 'flex', gap: '0.35rem' }}>
-            {['ALL', 'Q3_2026', 'LAST_30_DAYS', 'YEAR_TO_DATE'].map((range) => (
+            {['ALL', 'Q2_2026', 'Q3_2026', 'LAST_7_DAYS', 'LAST_30_DAYS'].map((range) => (
               <button
                 key={range}
                 onClick={() => setDateRange(range)}

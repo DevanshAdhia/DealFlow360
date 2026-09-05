@@ -14,7 +14,7 @@ import {
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
-import PRODUCTS_DATA from '../../data/products.json';
+const PRODUCTS_DATA = [];
 import { calculateQuotationTotals } from '../../utils/quotationCalculations.js';
 import { formatINR } from '../../utils/formatters.js';
 

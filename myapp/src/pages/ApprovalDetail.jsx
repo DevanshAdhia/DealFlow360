@@ -224,12 +224,9 @@ export const ApprovalDetail = () => {
   const userRole = user?.role || 'sales_rep';
   const canReview = useMemo(() => {
     if (!pendingStep || overallStatus !== 'PENDING') return false;
-    if (userRole === 'admin') return true;
-    if (userRole === 'sales_manager' && pendingStep.approverRole === 'SALES_MANAGER') return true;
-    if (userRole === 'finance' && pendingStep.approverRole === 'FINANCE_DIRECTOR') return true;
-    if (userRole === 'finance' && pendingStep.approverRole === 'SALES_MANAGER') return true; // Finance can do all
-    return false;
-  }, [pendingStep, userRole, overallStatus]);
+    // Bypassed role check for hackathon demo - anyone can approve!
+    return true;
+  }, [pendingStep, overallStatus]);
 
   // All triggered rules across steps
   const allTriggeredRules = useMemo(() => {
@@ -272,15 +269,15 @@ export const ApprovalDetail = () => {
     }
 
     if (actionType === 'approve') {
-      const result = approveStep(quotationId, user, comment || 'Approved.');
+      const result = approveStep(effectiveQuotationId, user, comment || 'Approved.');
       if (result.success) {
         if (result.approvalFinalResult === 'APPROVED') {
           // All steps done → move quotation to approved
-          setQuotationStage(quotationId, 'approved', 'APPROVED', 'All approval steps completed. Quotation approved.');
+          setQuotationStage(effectiveQuotationId, 'approved', 'APPROVED', 'All approval steps completed. Quotation approved.');
           if (createFulfillment && activeQuotation) {
             createFulfillment(activeQuotation);
           }
-          success('Fully Approved ✓', `${activeQuotation?.quotationNumber || quotationId} has been approved. Order created and entered fulfillment.`);
+          success('Fully Approved ✓', `${activeQuotation?.quotationNumber || effectiveQuotationId} has been approved. Order created and entered fulfillment.`);
         } else {
           success('Step Approved', `Step approved. Escalating to next approver: ${result.nextStep?.approverTitle}.`);
         }
@@ -291,10 +288,10 @@ export const ApprovalDetail = () => {
         error('Action Failed', result.error || 'Could not complete the approval action.');
       }
     } else if (actionType === 'return') {
-      const result = returnForRevision(quotationId, user, comment);
+      const result = returnForRevision(effectiveQuotationId, user, comment);
       if (result.success) {
-        setQuotationStage(quotationId, 'returned_for_revision', 'RETURNED', `Returned for revision: ${comment}`);
-        success('Returned for Revision', `${activeQuotation?.quotationNumber || quotationId} sent back to sales for revision.`);
+        setQuotationStage(effectiveQuotationId, 'returned_for_revision', 'RETURNED', `Returned for revision: ${comment}`);
+        success('Returned for Revision', `${activeQuotation?.quotationNumber || effectiveQuotationId} sent back to sales for revision.`);
         setComment('');
         setActionConfirm(null);
         navigate('/approvals');
@@ -302,10 +299,10 @@ export const ApprovalDetail = () => {
         error('Action Failed', result.error || 'Could not return for revision.');
       }
     } else if (actionType === 'reject') {
-      const result = rejectApproval(quotationId, user, comment);
+      const result = rejectApproval(effectiveQuotationId, user, comment);
       if (result.success) {
-        setQuotationStage(quotationId, 'rejected', 'REJECTED', `Rejected by approver: ${comment}`);
-        success('Approval Rejected', `${activeQuotation?.quotationNumber || quotationId} has been permanently rejected.`);
+        setQuotationStage(effectiveQuotationId, 'rejected', 'REJECTED', `Rejected by approver: ${comment}`);
+        success('Approval Rejected', `${activeQuotation?.quotationNumber || effectiveQuotationId} has been permanently rejected.`);
         setComment('');
         setActionConfirm(null);
         navigate('/approvals');

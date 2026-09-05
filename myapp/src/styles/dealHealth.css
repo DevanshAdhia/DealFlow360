@@ -150,7 +150,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: var(--shadow-sm);
 }
 
@@ -431,4 +431,12 @@
   border-radius: 50%;
   margin-top: 0.35rem;
   flex-shrink: 0;
+}
+
+
+/* Add padding to the last column to prevent edge hugging */
+.dh-table-container th:last-child, .dh-table-container td:last-child, 
+.table th:last-child, .table td:last-child, 
+table th:last-child, table td:last-child {
+  padding-right: 1.5rem !important;
 }

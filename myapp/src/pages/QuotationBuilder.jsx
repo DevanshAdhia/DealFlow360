@@ -23,7 +23,6 @@ import { CartLineItem } from '../components/builder/CartLineItem.jsx';
 import { BuilderSummary } from '../components/builder/BuilderSummary.jsx';
 import { RecommendationPanel } from '../components/builder/RecommendationPanel.jsx';
 import { computeLineItem, calculateQuotationTotals } from '../utils/quotationCalculations.js';
-import { JsonInspectorModal } from '../components/common/JsonInspectorModal.jsx';
 
 export const QuotationBuilder = () => {
   const { id } = useParams();
@@ -37,8 +36,7 @@ export const QuotationBuilder = () => {
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [approvalReason, setApprovalReason] = useState('');
-  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
-
+  
   // Initialize
   useEffect(() => {
     const found = getQuotationById(id);
@@ -217,26 +215,7 @@ export const QuotationBuilder = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {/* Live JSON Inspector button */}
-          <button
-            onClick={() => setIsJsonModalOpen(true)}
-            className="btn"
-            style={{
-              backgroundColor: 'rgba(79, 70, 229, 0.08)',
-              color: '#4F46E5',
-              border: '1px solid rgba(79, 70, 229, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              fontWeight: '600',
-              fontSize: '0.8125rem',
-              padding: '0.55rem 0.85rem',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer'
-            }}
-          >
-            <Code size={15} />
-            <span>{'{ }'} Live JSON</span>
-          </button>
+          
 
           <button className="btn btn-secondary" onClick={handleSave}>
             <Save size={16} /> Save Draft
@@ -360,12 +339,7 @@ export const QuotationBuilder = () => {
       )}
 
       {/* Live JSON Inspector Modal */}
-      <JsonInspectorModal
-        isOpen={isJsonModalOpen}
-        onClose={() => setIsJsonModalOpen(false)}
-        quotationData={currentBuilderPayload}
-        title="CPQ Builder Live State JSON"
-      />
+      
     </div>
   );
 };

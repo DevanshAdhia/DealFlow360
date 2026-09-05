@@ -23,7 +23,120 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useToast } from '../../hooks/useToast.js';
-import { JsonInspectorModal } from '../common/JsonInspectorModal.jsx';
+import { NAVIGATION_CONFIG } from '../../config/navigationConfig.js';
+
+const SidebarNavItem = ({ item, isCollapsed, closeMobile, currentPath }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const Icon = item.icon || FileText;
+  
+  // Use a fallback icon mapping since config doesn't have icons
+  const iconMap = {
+    dashboard: LayoutDashboard,
+    quotations: FileText,
+    approvals: CheckSquare,
+    fulfillment: Package,
+    subscriptions: Layers,
+    invoices: CreditCard,
+    dealHealth: Activity,
+    reports: BarChart3,
+    products: Package
+  };
+  const ResolvedIcon = iconMap[item.key] || Icon;
+
+  const isActive = currentPath.includes(item.path);
+
+  if (!item.hasSubmenu) {
+    return (
+      <NavLink
+        to={item.path}
+        onClick={closeMobile}
+        style={({ isActive: isLinkActive }) => ({
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.625rem 0.875rem',
+          borderRadius: '0 8px 8px 0',
+          textDecoration: 'none',
+          color: isLinkActive || isActive ? '#6366f1' : '#64748b',
+          backgroundColor: isLinkActive || isActive ? '#eff6ff' : 'transparent',
+          fontWeight: isLinkActive || isActive ? '600' : '500',
+          marginBottom: '2px',
+          borderLeft: isLinkActive || isActive ? '4px solid #6366f1' : '4px solid transparent',
+          transition: 'all 150ms ease'
+        })}
+        title={isCollapsed ? item.label : undefined}
+      >
+        <ResolvedIcon size={18} />
+        {!isCollapsed && <span style={{ fontSize: '0.8125rem' }}>{item.label}</span>}
+      </NavLink>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: '2px' }}>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          padding: '0.625rem 0.875rem',
+          borderRadius: '0 8px 8px 0',
+          border: 'none',
+          borderLeft: isActive ? '4px solid #6366f1' : '4px solid transparent',
+          background: 'transparent',
+          color: isActive ? '#6366f1' : '#64748b',
+          backgroundColor: isActive && !isExpanded ? '#eff6ff' : 'transparent',
+          cursor: 'pointer',
+          fontWeight: isActive ? '600' : '500',
+          transition: 'all 150ms ease'
+        }}
+        title={isCollapsed ? item.label : undefined}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <ResolvedIcon size={18} />
+          {!isCollapsed && <span style={{ fontSize: '0.8125rem' }}>{item.label}</span>}
+        </div>
+        {!isCollapsed && (
+          <ChevronRight 
+            size={16} 
+            style={{ 
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)',
+              transition: 'transform 150ms ease'
+            }} 
+          />
+        )}
+      </button>
+
+      {isExpanded && !isCollapsed && (
+        <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '2.5rem', marginTop: '2px' }}>
+          {item.children.map(child => {
+            let childPath = child.path || child.pathTemplate?.replace(child.paramKey, item.defaultDetailId);
+            return (
+              <NavLink
+                key={child.key}
+                to={childPath}
+                onClick={closeMobile}
+                style={({ isActive: isLinkActive }) => ({
+                  padding: '0.4rem 0.5rem',
+                  fontSize: '0.75rem',
+                  color: isLinkActive ? '#6366f1' : '#64748b',
+                  textDecoration: 'none',
+                  fontWeight: isLinkActive ? '600' : '500',
+                  borderRadius: '4px',
+                  backgroundColor: isLinkActive ? '#eff6ff' : 'transparent',
+                })}
+              >
+                {child.label}
+              </NavLink>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }) => {
   const { user, logout, switchDemoRole } = useAuth();
@@ -31,8 +144,7 @@ export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }
   const location = useLocation();
   const navigate = useNavigate();
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
-  const [showJsonModal, setShowJsonModal] = useState(false);
-
+  
   // Default to Sales Persona (Alex Morgan) if not logged in or in Sales mode
   const activeUser = user || {
     name: 'Alex Morgan',
@@ -47,20 +159,20 @@ export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }
   // Group 1: SALES PIPELINE (Matching Sales Suite Architecture)
   const salesNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { label: 'Products & Catalog', icon: Package, path: '/sales/products' },
     { label: 'Quotations', icon: FileText, path: '/quotations' },
     { label: 'New Quotation', icon: PlusCircle, path: '/quotations/new' },
-    { label: 'Products & Catalog', icon: Package, path: '/sales/products' },
     { label: 'Sales Pipeline', icon: TrendingUp, path: '/pipeline' },
   ];
 
   // Group 2: GOVERNANCE & REVOPS
   const governanceNavItems = [
     { label: 'Deal Health', icon: Activity, path: '/deal-health' },
+    { label: 'Reports & Analytics', icon: BarChart3, path: '/reports' },
     { label: 'Approvals', icon: CheckSquare, path: '/approvals' },
     { label: 'Fulfillment', icon: Package, path: '/fulfillment' },
     { label: 'Invoices', icon: FileText, path: '/invoices' },
     { label: 'Billing & Schedules', icon: CreditCard, path: '/billing' },
-    { label: 'Reports & Analytics', icon: BarChart3, path: '/reports' },
   ];
 
   // Admin Nav Items fallback if switched to Admin role
@@ -138,139 +250,67 @@ export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }
           </button>
         </div>
 
-        {/* User Card (Sales Representative) */}
+        {/* User Card (Moved to Top) */}
         {!isCollapsed && (
-          <div 
-            style={styles.userCard}
-            onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-            title="Click to switch persona (Sales Rep, Sales Manager, Finance, Admin)"
-          >
-            <div style={styles.avatarCircle}>
-              {initials}
+          <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+            <div 
+              style={styles.userCard}
+              onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
+              title="Click to switch persona (Sales Rep, Sales Manager, Finance, Admin)"
+            >
+              <div style={styles.avatarCircle}>
+                {initials}
+              </div>
+              <div style={styles.userInfo}>
+                <div style={styles.userName}>{activeUser.name}</div>
+                <div style={styles.userEmail}>{activeUser.email}</div>
+                <div style={styles.userRole}>{activeUser.roleLabel || 'Sales Representative'}</div>
+              </div>
             </div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>{activeUser.name}</div>
-              <div style={styles.userEmail}>{activeUser.email}</div>
-              <div style={styles.userRole}>{activeUser.roleLabel || 'Sales Representative'}</div>
-            </div>
+
+            {/* Persona Switcher Dropdown */}
+            {showRoleSwitcher && (
+              <div style={{...styles.roleDropdown, position: 'absolute', top: '100%', left: '0.875rem', right: '0.875rem', zIndex: 50}}>
+                <div style={styles.roleDropdownHeader}>Select Workspace Persona</div>
+                {[
+                  { role: 'sales_rep', name: 'Alex Morgan (Sales Rep)' },
+                  { role: 'sales_manager', name: 'Sarah Jenkins (Sales Manager)' },
+                  { role: 'finance', name: 'Marcus Vance (Finance / Ops)' },
+                  { role: 'admin', name: 'David Sterling (System Admin)' }
+                ].map((r) => (
+                  <button
+                    key={r.role}
+                    onClick={() => handleRoleSwitch(r.role)}
+                    style={{
+                      ...styles.roleOption,
+                      ...(activeUser.role === r.role ? styles.roleOptionActive : {})
+                    }}
+                  >
+                    {r.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Persona Switcher Dropdown */}
-        {showRoleSwitcher && !isCollapsed && (
-          <div style={styles.roleDropdown}>
-            <div style={styles.roleDropdownHeader}>Select Workspace Persona</div>
-            {[
-              { role: 'sales_rep', name: 'Alex Morgan (Sales Rep)' },
-              { role: 'sales_manager', name: 'Sarah Jenkins (Sales Manager)' },
-              { role: 'finance', name: 'Marcus Vance (Finance / Ops)' },
-              { role: 'admin', name: 'David Sterling (System Admin)' }
-            ].map((r) => (
-              <button
-                key={r.role}
-                onClick={() => handleRoleSwitch(r.role)}
-                style={{
-                  ...styles.roleOption,
-                  ...(activeUser.role === r.role ? styles.roleOptionActive : {})
-                }}
-              >
-                {r.name}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Navigation Links */}
         <nav style={styles.navContainer}>
-          {isSalesSide ? (
-            <>
-              {/* Group 1: SALES PIPELINE */}
-              <div style={styles.navGroupLabel}>
-                {!isCollapsed ? 'SALES PIPELINE' : '•••'}
-              </div>
+          <div style={styles.navGroupLabel}>
+            {!isCollapsed ? (isSalesSide ? 'SALES OPERATIONS' : 'ADMINISTRATION') : '•••'}
+          </div>
 
-              {salesNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+          {NAVIGATION_CONFIG.map((item) => (
+            <SidebarNavItem 
+              key={item.key} 
+              item={item} 
+              isCollapsed={isCollapsed} 
+              closeMobile={closeMobile}
+              currentPath={location.pathname}
+            />
+          ))}
 
-                return (
-                  <NavLink
-                    key={item.label}
-                    to={item.path}
-                    onClick={closeMobile}
-                    style={({ isActive: isLinkActive }) => ({
-                      ...styles.navLink,
-                      ...(isLinkActive || isActive ? styles.navLinkActive : {})
-                    })}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon size={18} style={isActive ? { color: '#6366f1' } : { color: '#64748b' }} />
-                    {!isCollapsed && (
-                      <span style={styles.navLabel}>{item.label}</span>
-                    )}
-                  </NavLink>
-                );
-              })}
-
-              {/* Group 2: GOVERNANCE & REVOPS */}
-              <div style={{ ...styles.navGroupLabel, marginTop: '1rem' }}>
-                {!isCollapsed ? 'GOVERNANCE & REVOPS' : '•••'}
-              </div>
-
-              {governanceNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-
-                return (
-                  <NavLink
-                    key={item.label}
-                    to={item.path}
-                    onClick={closeMobile}
-                    style={({ isActive: isLinkActive }) => ({
-                      ...styles.navLink,
-                      ...(isLinkActive || isActive ? styles.navLinkActive : {})
-                    })}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon size={18} style={isActive ? { color: '#6366f1' } : { color: '#64748b' }} />
-                    {!isCollapsed && (
-                      <span style={styles.navLabel}>{item.label}</span>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </>
-          ) : (
-            <>
-              {/* Admin Navigation */}
-              <div style={styles.navGroupLabel}>
-                {!isCollapsed ? 'ADMINISTRATION' : '•••'}
-              </div>
-
-              {adminNavItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-
-                return (
-                  <NavLink
-                    key={item.label}
-                    to={item.path}
-                    onClick={closeMobile}
-                    style={({ isActive: isLinkActive }) => ({
-                      ...styles.navLink,
-                      ...(isLinkActive || isActive ? styles.navLinkActive : {})
-                    })}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon size={18} style={isActive ? { color: '#6366f1' } : { color: '#64748b' }} />
-                    {!isCollapsed && (
-                      <span style={styles.navLabel}>{item.label}</span>
-                    )}
-                  </NavLink>
-                );
-              })}
-            </>
-          )}
         </nav>
 
         {/* Footer with Logout */}
@@ -482,8 +522,10 @@ const styles = {
     padding: '0.875rem',
     borderTop: '1px solid #f8fafc',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    gap: '0.5rem'
   },
   logoutBtn: {
     width: '100%',

@@ -303,7 +303,7 @@ export const DealHealth = () => {
                 <th>Top Risk Signal</th>
                 <th>Recommended Action</th>
                 <th>Stage</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ textAlign: 'right', paddingRight: '1.5rem' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -384,7 +384,7 @@ export const DealHealth = () => {
                       </span>
                     </td>
 
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
                       <button 
                         className="btn btn-secondary"
                         style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}

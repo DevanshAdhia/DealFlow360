@@ -28,7 +28,7 @@ import {
 import { useQuotations } from '../context/QuotationContext.jsx';
 import { useToast } from '../hooks/useToast.js';
 import { formatINR, formatINRCompact } from '../utils/formatters.js';
-import INITIAL_CUSTOMERS from '../data/customers.json';
+const INITIAL_CUSTOMERS = [];
 import { Button, Input, Select, Badge, Modal } from '../components/common/UI.jsx';
 
 const STORAGE_CUSTOMERS_KEY = 'dealflow360_customers_v2';

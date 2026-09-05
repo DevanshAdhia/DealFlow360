@@ -8,6 +8,10 @@ export const CustomerProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  React.useEffect(() => {
+    localStorage.setItem('dealflow_customers', JSON.stringify(customers));
+  }, [customers]);
+
   const loadCustomers = useCallback(() => {
     try {
       const data = dataService.getCustomers();

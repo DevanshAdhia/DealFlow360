@@ -23,6 +23,7 @@ import { PageHeader } from '../components/common/PageHeader.jsx';
 import { StatusBadge } from '../components/common/StatusBadge.jsx';
 import { ErrorState } from '../components/common/ErrorState.jsx';
 import { useToast } from '../hooks/useToast.js';
+import { getAllProducts } from '../services/productService.js';
 
 export const ProductDetail = () => {
   const { productId, id } = useParams();
@@ -35,6 +36,8 @@ export const ProductDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(initialProduct ? { ...initialProduct } : null);
 
+  const relatedProducts = getAllProducts().filter(p => p.id !== targetId).slice(0, 4);
+
   // Detail Route Safety (Section 21: If user enters /sales/products/INVALID show Product Not Found)
   if (!product) {
     return (
@@ -43,7 +46,7 @@ export const ProductDetail = () => {
           title="Product Not Found"
           message={`No product could be found with SKU/ID "${targetId}". Please verify the catalog identifier.`}
           backButton={{
-            label: '← Back to Products',
+            label: 'Back to Products',
             path: '/sales/products'
           }}
         />
@@ -78,7 +81,7 @@ export const ProductDetail = () => {
           { label: product.name, path: `/sales/products/${product.id}` }
         ]}
         backButton={{
-          label: '← Back to Products',
+          label: 'Back to Products',
           path: '/sales/products'
         }}
         actions={
@@ -548,6 +551,47 @@ export const ProductDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Related Products Section */}
+      <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '1rem' }}>
+          Related Products & Upgrades
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+          {relatedProducts.map(relProd => (
+            <div 
+              key={relProd.id}
+              onClick={() => navigate(`/sales/products/${relProd.id}`)}
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '1rem',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#1e40af';
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a' }}>{relProd.name}</span>
+                <span style={{ fontSize: '0.8125rem', color: '#1e40af', fontWeight: 700 }}>{formatINR(relProd.unitPrice)}</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{relProd.categoryName || 'Catalog Product'} • {relProd.productCode}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

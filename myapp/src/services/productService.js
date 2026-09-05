@@ -1,10 +1,16 @@
-import PRODUCTS_SEED from '../data/products.json';
-import CATEGORIES_SEED from '../data/categories.json';
-import VARIANTS_SEED from '../data/productVariants.json';
-import PRICELISTS_SEED from '../data/priceLists.json';
-import PRICELIST_ITEMS_SEED from '../data/priceListItems.json';
-import CUSTOMER_TIERS_SEED from '../data/customerTiers.json';
-import INVENTORY_SEED from '../data/inventory.json';
+import { MOCK_PRODUCTS } from '../data/products.js';
+
+const PRODUCTS_SEED = MOCK_PRODUCTS || [];
+const CATEGORIES_SEED = [
+  { id: 'CAT-001', name: 'Software Subscription', code: 'SW_SUB', defaultGSTRate: 18 },
+  { id: 'CAT-002', name: 'Hardware Infrastructure', code: 'HW_INF', defaultGSTRate: 18 },
+  { id: 'CAT-003', name: 'Professional Services', code: 'PRO_SVC', defaultGSTRate: 18 },
+];
+const VARIANTS_SEED = [];
+const PRICELISTS_SEED = [];
+const PRICELIST_ITEMS_SEED = [];
+const CUSTOMER_TIERS_SEED = [];
+const INVENTORY_SEED = [];
 
 /**
  * Retrieves all products enriched with category details, variant count, and stock quantity

@@ -2,7 +2,7 @@
 // Manages approval lifecycle for quotations. Uses React state only (no localStorage).
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import INITIAL_APPROVAL_STEPS from '../data/quotationApprovals.json';
+const INITIAL_APPROVAL_STEPS = [];
 import { evaluateQuotationApproval, APPROVAL_LEVELS } from '../data/approvalRules.js';
 import { MOCK_USERS } from '../data/users.js';
 
@@ -57,8 +57,22 @@ export const ApprovalProvider = ({ children }) => {
   const [approvalSteps, dispatch] = useReducer(
     approvalReducer,
     null,
-    () => deepClone(INITIAL_APPROVAL_STEPS)
+    () => {
+      const existing = localStorage.getItem('dealflow_approvalSteps');
+      if (existing) {
+        try { return JSON.parse(existing); } catch (e) {}
+      }
+      const seed = deepClone(INITIAL_APPROVAL_STEPS);
+      localStorage.setItem('dealflow_approvalSteps', JSON.stringify(seed));
+      return seed;
+    }
   );
+
+  React.useEffect(() => {
+    if (approvalSteps) {
+      localStorage.setItem('dealflow_approvalSteps', JSON.stringify(approvalSteps));
+    }
+  }, [approvalSteps]);
 
   /**
    * Evaluates a quotation and creates approval steps based on triggered rules.

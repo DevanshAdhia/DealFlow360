@@ -1,17 +1,17 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 
 // Seed master JSON datasets
-import INVOICES_DATA from '../data/invoices.json';
-import INVOICE_ITEMS_DATA from '../data/invoiceItems.json';
-import PAYMENTS_DATA from '../data/payments.json';
-import CUSTOMERS_DATA from '../data/customers.json';
-import ORDERS_DATA from '../data/orders.json';
-import ORDER_ITEMS_DATA from '../data/orderItems.json';
-import SUBSCRIPTIONS_DATA from '../data/subscriptions.json';
-import SUBSCRIPTION_ITEMS_DATA from '../data/subscriptionItems.json';
-import BILLING_SCHEDULES_DATA from '../data/billingSchedules.json';
-import FULFILLMENT_ORDERS_DATA from '../data/fulfillmentOrders.json';
-import FULFILLMENT_ITEMS_DATA from '../data/fulfillmentItems.json';
+const INVOICES_DATA = [];
+const INVOICE_ITEMS_DATA = [];
+const PAYMENTS_DATA = [];
+const CUSTOMERS_DATA = [];
+const ORDERS_DATA = [];
+const ORDER_ITEMS_DATA = [];
+const SUBSCRIPTIONS_DATA = [];
+const SUBSCRIPTION_ITEMS_DATA = [];
+const BILLING_SCHEDULES_DATA = [];
+const FULFILLMENT_ORDERS_DATA = [];
+const FULFILLMENT_ITEMS_DATA = [];
 
 import {
   calculateInvoicePaidAmount,
@@ -24,14 +24,31 @@ import { createAuditEvent } from '../services/auditService.js';
 
 const InvoiceContext = createContext();
 
+const getOrSeed = (key, seedData) => {
+  const lsKey = `dealflow_${key}`;
+  const existing = localStorage.getItem(lsKey);
+  if (existing) {
+    try { return JSON.parse(existing); } catch(e) {}
+  }
+  localStorage.setItem(lsKey, JSON.stringify(seedData));
+  return JSON.parse(JSON.stringify(seedData));
+};
+
 export const InvoiceProvider = ({ children }) => {
-  // Pure React state (Zero localStorage)
-  const [invoices, setInvoices] = useState(INVOICES_DATA);
-  const [invoiceItems, setInvoiceItems] = useState(INVOICE_ITEMS_DATA);
-  const [payments, setPayments] = useState(PAYMENTS_DATA);
-  const [billingSchedules, setBillingSchedules] = useState(BILLING_SCHEDULES_DATA);
-  const [subscriptionItems, setSubscriptionItems] = useState(SUBSCRIPTION_ITEMS_DATA);
-  const [auditLogs, setAuditLogs] = useState([]);
+  // Pure React state synced to localStorage
+  const [invoices, setInvoices] = useState(() => getOrSeed('invoices_state', INVOICES_DATA));
+  const [invoiceItems, setInvoiceItems] = useState(() => getOrSeed('invoiceItems_state', INVOICE_ITEMS_DATA));
+  const [payments, setPayments] = useState(() => getOrSeed('payments_state', PAYMENTS_DATA));
+  const [billingSchedules, setBillingSchedules] = useState(() => getOrSeed('billingSchedules_state', BILLING_SCHEDULES_DATA));
+  const [subscriptionItems, setSubscriptionItems] = useState(() => getOrSeed('subscriptionItems_state', SUBSCRIPTION_ITEMS_DATA));
+  const [auditLogs, setAuditLogs] = useState(() => getOrSeed('invoiceAuditLogs_state', []));
+
+  React.useEffect(() => { localStorage.setItem('dealflow_invoices_state', JSON.stringify(invoices)); }, [invoices]);
+  React.useEffect(() => { localStorage.setItem('dealflow_invoiceItems_state', JSON.stringify(invoiceItems)); }, [invoiceItems]);
+  React.useEffect(() => { localStorage.setItem('dealflow_payments_state', JSON.stringify(payments)); }, [payments]);
+  React.useEffect(() => { localStorage.setItem('dealflow_billingSchedules_state', JSON.stringify(billingSchedules)); }, [billingSchedules]);
+  React.useEffect(() => { localStorage.setItem('dealflow_subscriptionItems_state', JSON.stringify(subscriptionItems)); }, [subscriptionItems]);
+  React.useEffect(() => { localStorage.setItem('dealflow_invoiceAuditLogs_state', JSON.stringify(auditLogs)); }, [auditLogs]);
 
   // Compute live invoices with updated paid amount, balance, and payment status
   const liveInvoices = useMemo(() => {
