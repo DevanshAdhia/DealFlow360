@@ -1,1 +1,3 @@
-from apps.customer.models.customer import Customer  # noqa: F401
+from apps.customer.models.customer import Customer, CustomerTier
+
+__all__ = ["Customer", "CustomerTier"]

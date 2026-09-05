@@ -1,0 +1,15 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.analysis.typeCheckingMode": "off",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}"
+  ],
+  "pyrefly.enable": false,
+  "pyrefly.typeCheckingMode": "off",
+  "python.pyrefly.typeCheckingMode": "off",
+  "python.pyrefly.disableLanguageServices": true
+}

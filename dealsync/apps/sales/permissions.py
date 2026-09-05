@@ -1,21 +1,25 @@
-from rest_framework.permissions import BasePermission, IsAdminUser, SAFE_METHODS
-from rest_framework.request import Request
-from rest_framework.views import View
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
-class IsSalesOwner(BasePermission):
-    """Allow access only to the owner of the object."""
+class IsQuotationOwner(BasePermission):
+    """
+    A custom object-level permission is required because authorization depends
+    on the relationship between the authenticated user and the sales_rep_id on the requested object.
+    """
 
-    def has_object_permission(self, request: Request, view: View, obj) -> bool:
-        # Adjust this logic based on your ownership model.
-        # Example: if the model has a 'user' FK, check request.user == obj.user
-        return True
+    def has_object_permission(self, request, view, obj) -> bool:  # type: ignore
+        if request.user and request.user.is_staff:
+            return True
+        return str(getattr(request.user, "id", "")) == str(getattr(obj, "sales_rep_id", ""))
 
 
 class IsSalesAdminOrReadOnly(BasePermission):
-    """Allow read to all authenticated, write only to admins."""
+    """
+    A custom permission class is used because read operations are open to authenticated sales staff
+    while write/delete operations require elevated staff or admin permissions.
+    """
 
-    def has_permission(self, request: Request, view: View) -> bool:
+    def has_permission(self, request, view) -> bool:  # type: ignore
         if request.method in SAFE_METHODS:
             return bool(request.user and request.user.is_authenticated)
         return bool(request.user and request.user.is_staff)

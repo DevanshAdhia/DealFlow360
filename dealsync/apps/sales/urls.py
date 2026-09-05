@@ -1,10 +1,7 @@
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from apps.sales.views import SalesViewSet
+from apps.sales.views import QuotationViewSet
 
 router = DefaultRouter()
-router.register(r"saless", SalesViewSet, basename="sales")
+router.register(r"quotations", QuotationViewSet, basename="quotation")
 
-urlpatterns = [
-    path("", include(router.urls)),
-]
+urlpatterns = router.urls

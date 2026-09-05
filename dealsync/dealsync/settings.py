@@ -38,6 +38,9 @@ LOCAL_APPS = [
     "apps.warehouse",
     "apps.subscription",
     "apps.customer",
+    "apps.negotiations",
+    "apps.deal_health",
+    "apps.reports",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -78,13 +81,14 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME", default="dealsync_db"),
+        "NAME": env("DB_NAME", default="dealsync"),
         "USER": env("DB_USER", default="postgres"),
-        "PASSWORD": env("DB_PASSWORD", default="postgres"),
+        "PASSWORD": env("DB_PASSWORD", default=""),
         "HOST": env("DB_HOST", default="localhost"),
         "PORT": env("DB_PORT", default="5432"),
     }
 }
+
 
 CACHES = {
     "default": {

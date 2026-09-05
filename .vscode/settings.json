@@ -1,0 +1,24 @@
+{
+  "python.languageServer": "Pylance",
+  "python.defaultInterpreterPath": "${workspaceFolder}/dealsync/venv/Scripts/python.exe",
+  "python.envFile": "${workspaceFolder}/dealsync/.env",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.indexing": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/dealsync"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/dealsync"
+  ],
+  "pyrefly.enable": false,
+  "pyrefly.typeCheckingMode": "off",
+  "python.pyrefly.typeCheckingMode": "off",
+  "python.pyrefly.disableLanguageServices": true,
+  "files.exclude": {
+    "**/__pyrefly_virtual__": true
+  },
+  "search.exclude": {
+    "**/__pyrefly_virtual__": true
+  }
+}
