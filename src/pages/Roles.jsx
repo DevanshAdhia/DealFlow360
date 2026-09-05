@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
+import { Button, Input, Select, Badge, Modal, DataTable, ConfirmDialog } from '../components/common/UI';
 import { getRoles, saveEntity, deleteEntity } from '../services/storageService';
 
 function Roles() {
@@ -21,9 +21,7 @@ function Roles() {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
+  const handleCloseModal = () => setIsModalOpen(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -40,6 +38,15 @@ function Roles() {
     handleCloseModal();
   };
 
+  const columns = [
+    { Header: 'Role Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Description', accessor: 'description', sortable: false, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.description}</span> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+      <Button variant="secondary" onClick={() => handleOpenModal(row)} style={{ padding: '0.375rem 0.75rem' }}>Edit Permissions</Button>
+    )}
+  ];
+
   return (
     <div>
       <div className="page-header">
@@ -49,30 +56,12 @@ function Roles() {
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Role Name</th>
-                  <th>Description</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roles.map(role => (
-                  <tr key={role.id}>
-                    <td style={{ fontWeight: 500 }}>{role.name}</td>
-                    <td>{role.description}</td>
-                    <td><Badge>{role.status}</Badge></td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(role)} style={{ padding: '0.25rem 0.5rem' }}>Edit</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable 
+            columns={columns} 
+            data={roles} 
+            emptyMessage="No roles defined." 
+            emptyAction={<Button onClick={() => handleOpenModal()}>+ Create First Role</Button>} 
+          />
         </div>
       </div>
 

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
+import { Button, Input, Select, Badge, Modal, DataTable, ConfirmDialog } from '../components/common/UI';
 import { getCategories, saveEntity, deleteEntity } from '../services/storageService';
 
 function Categories() {
   const [categories, setCategories] = useState(() => getCategories());
   const [search, setSearch] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '', status: 'Active' });
 
   const filtered = categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
@@ -34,13 +36,27 @@ function Categories() {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this category?')) {
-      const updated = deleteEntity('df_categories', id);
+  const executeDelete = () => {
+    if (deleteConfirmId) {
+      const updated = deleteEntity('df_categories', deleteConfirmId);
       setCategories(updated);
       toast.success('Category deleted');
+      setDeleteConfirmId(null);
     }
   };
+
+  const columns = [
+    { Header: 'Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Description', accessor: 'description', sortable: false, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.description}</span> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" onClick={() => handleOpenModal(row)} style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" onClick={() => setDeleteConfirmId(row.id)} style={{ padding: '0.375rem 0.75rem' }}>Delete</Button>
+        </div>
+      ) 
+    }
+  ];
 
   return (
     <div>
@@ -55,22 +71,7 @@ function Categories() {
           <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 0 }} />
         </div>
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {filtered.map(c => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td><td>{c.description}</td><td><Badge>{c.status}</Badge></td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(c)} style={{marginRight: '0.5rem', padding: '0.25rem 0.5rem'}}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(c.id)} style={{padding: '0.25rem 0.5rem'}}>Delete</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={filtered} emptyMessage="No categories found." emptyAction={<Button onClick={() => handleOpenModal()}>+ Create Category</Button>} />
         </div>
       </div>
 
@@ -85,6 +86,14 @@ function Categories() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={executeDelete}
+        title="Delete Category"
+        message="Are you sure? Ensure no products are currently linked to this category before deleting."
+      />
     </div>
   );
 }

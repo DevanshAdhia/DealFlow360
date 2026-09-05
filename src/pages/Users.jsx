@@ -1,159 +1,150 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
-import { getUsers, saveEntity, deleteEntity, getRoles } from '../services/storageService';
+import { Button, Input, Select, Badge, DataTable, ConfirmDialog } from '../components/common/UI';
+import { getUsers, saveEntity, deleteEntity } from '../services/storageService';
 
 function Users() {
   const [users, setUsers] = useState(() => getUsers());
-  const [roles] = useState(() => getRoles());
   const [search, setSearch] = useState('');
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  
-  // Form state
-  const [formData, setFormData] = useState({ name: '', email: '', role: '', department: '', status: 'Active' });
-  const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
-  const filteredUsers = users.filter(u => 
+  const filtered = users.filter(u => 
     u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    u.role.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleOpenModal = (user = null) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({ name: user.name, email: user.email, role: user.role, department: user.department, status: user.status });
-    } else {
-      setEditingUser(null);
-      setFormData({ name: '', email: '', role: '', department: '', status: 'Active' });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setFormData({ name: '', email: '', role: '', department: '', status: 'Active' });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.email || !formData.role) {
-      toast.error('Name, email, and role are required');
-      return;
-    }
-    
-    setLoading(true);
-    setTimeout(() => {
-      const isNew = !editingUser;
-      const entity = {
-        ...formData,
-        id: isNew ? undefined : editingUser.id,
-        created: isNew ? new Date().toISOString().split('T')[0] : editingUser.created
-      };
-      
-      const updatedUsers = saveEntity('df_users', entity, isNew);
-      setUsers(updatedUsers);
-      toast.success(`User ${isNew ? 'created' : 'updated'} successfully`);
-      setLoading(false);
-      handleCloseModal();
-    }, 500);
-  };
-
   const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      const updated = deleteEntity('df_users', id);
-      setUsers(updated);
-      toast.success('User deleted successfully');
-    }
+    setUserToDelete(id);
+    setShowConfirm(true);
   };
+
+  const confirmDelete = () => {
+    const updated = deleteEntity('df_users', userToDelete);
+    setUsers(updated);
+    toast.success("User deleted successfully.");
+    setShowConfirm(false);
+  };
+
+  const columns = [
+    { Header: 'Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Email', accessor: 'email', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.email}</span> },
+    { Header: 'Role', accessor: 'role', sortable: true },
+    { Header: 'Department', accessor: 'department', sortable: true },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge type={row.status === 'Active' ? 'success' : row.status === 'Inactive' ? 'default' : 'danger'}>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" style={{ padding: '0.375rem 0.75rem' }} onClick={() => handleDelete(row.id)}>Delete</Button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">User Management</h1>
-        <Button onClick={() => handleOpenModal()}>+ Add User</Button>
+        <div className="page-title-group">
+          <h1 className="page-title">User Administration</h1>
+          <p className="page-subtitle">Manage system access, roles, and departmental assignments across the organization.</p>
+        </div>
+        <Button className="btn-primary">+ Add New User</Button>
       </div>
 
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>All Users</span>
-          <Input 
-            placeholder="Search users..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            style={{ marginBottom: 0, width: '250px' }}
-          />
-        </div>
-        <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Department</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length > 0 ? filteredUsers.map(user => (
-                  <tr key={user.id}>
-                    <td style={{ fontWeight: 500 }}>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>{user.role}</td>
-                    <td>{user.department}</td>
-                    <td><Badge type="default">{user.status}</Badge></td>
-                    <td>{user.created}</td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(user)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem' }}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(user.id)} style={{ padding: '0.25rem 0.5rem' }}>Delete</Button>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--text-secondary)' }}>
-                      No users found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      <div className="metric-grid">
+        <div className="metric-card active">
+          <div className="metric-header">
+            <span className="metric-title">TOTAL USERS</span>
+            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           </div>
+          <div className="metric-value text-brand">{users.length}</div>
+          <div className="metric-subtitle">Active accounts across system</div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">ACTIVE</span>
+            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <div className="metric-value text-success">{users.filter(u=>u.status==='Active').length}</div>
+          <div className="metric-subtitle">Currently logged in: 12</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">SUSPENDED</span>
+            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          </div>
+          <div className="metric-value text-danger">{users.filter(u=>u.status==='Suspended').length}</div>
+          <div className="metric-subtitle">Requires administrator review</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">SYSTEM ADMINS</span>
+            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4V6a2 2 0 012-2h2a2 2 0 012 2v2l4 4" /></svg>
+          </div>
+          <div className="metric-value text-warning">{users.filter(u=>u.role==='Admin').length}</div>
+          <div className="metric-subtitle">Full access granted</div>
         </div>
       </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        title={editingUser ? 'Edit User' : 'Create User'}
-      >
-        <form onSubmit={handleSubmit}>
-          <Input label="Full Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-          <Input label="Email" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-          <Select 
-            label="Role" 
-            value={formData.role} 
-            onChange={e => setFormData({...formData, role: e.target.value})}
-            options={['', ...roles.map(r => r.name)]}
-            required
+      <div className="filter-bar">
+        <div className="filter-search">
+          <svg className="filter-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input 
+            type="text" 
+            className="filter-search-input"
+            placeholder="Search by Name, Email, or Role..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <Input label="Department" value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} />
-          <Select 
-            label="Status" 
-            value={formData.status} 
-            onChange={e => setFormData({...formData, status: e.target.value})}
-            options={['Active', 'Inactive', 'Suspended']}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
-            <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save User'}</Button>
+        </div>
+        
+        <select className="filter-select">
+          <option>Role: All Roles</option>
+        </select>
+        
+        <select className="filter-select">
+          <option>Status: All</option>
+        </select>
+        
+        <select className="filter-select">
+          <option>Department: All</option>
+        </select>
+
+        <div className="view-toggles">
+          <button className="view-toggle-btn active">
+            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+          </button>
+          <button className="view-toggle-btn">
+            <svg style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0 }}>
+        {filtered.length > 0 ? (
+          <DataTable columns={columns} data={filtered} />
+        ) : (
+          <div className="empty-state" style={{ minHeight: '250px', border: 'none', backgroundColor: 'transparent' }}>
+            <div className="empty-state-icon-container">
+              <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </div>
+            <h3 className="empty-state-title">No Users Found</h3>
+            <p className="empty-state-desc">Try adjusting your filters or search query.</p>
           </div>
-        </form>
-      </Modal>
+        )}
+      </div>
+
+      <ConfirmDialog 
+        isOpen={showConfirm} 
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Delete User"
+        message="Are you absolutely sure you want to delete this user? This action cannot be undone and will remove all their access privileges."
+      />
     </div>
   );
 }

@@ -1,172 +1,135 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
-import { getProducts, getCategories, saveEntity, deleteEntity } from '../services/storageService';
+import { Button, Input, Select, Badge, DataTable, ConfirmDialog } from '../components/common/UI';
+import { getProducts, saveEntity, deleteEntity } from '../services/storageService';
 
 function Products() {
   const [products, setProducts] = useState(() => getProducts());
-  const [categories] = useState(() => getCategories());
   const [search, setSearch] = useState('');
-  
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  
-  const [formData, setFormData] = useState({
-    name: '', sku: '', category: '', cost: 0, price: 0, stock: 0, status: 'Active'
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+
+  const filtered = products.filter(p => {
+    const s = search.toLowerCase();
+    return (p.name || '').toLowerCase().includes(s) || 
+           (p.sku || '').toLowerCase().includes(s);
   });
 
-  const filtered = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) || 
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const calculateMargin = (price, cost) => {
-    if (!price || price <= 0) return { margin: 0, percent: 0 };
-    const margin = price - cost;
-    const percent = ((margin / price) * 100).toFixed(1);
-    return { margin, percent };
-  };
-
-  const handleOpenModal = (product = null) => {
-    if (product) {
-      setEditingProduct(product);
-      setFormData({ ...product });
-    } else {
-      setEditingProduct(null);
-      setFormData({ name: '', sku: '', category: '', cost: 0, price: 0, stock: 0, status: 'Active' });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.sku) {
-      toast.error('Name and SKU are required');
-      return;
-    }
-    if (Number(formData.price) <= 0 || Number(formData.cost) < 0) {
-      toast.error('Invalid pricing');
-      return;
-    }
-    
-    const isNew = !editingProduct;
-    const entity = { 
-      ...formData, 
-      id: isNew ? undefined : editingProduct.id,
-      cost: Number(formData.cost),
-      price: Number(formData.price),
-      stock: Number(formData.stock)
-    };
-    
-    const updated = saveEntity('df_products', entity, isNew);
-    setProducts(updated);
-    toast.success(`Product ${isNew ? 'created' : 'updated'} successfully`);
-    setIsModalOpen(false);
-  };
-
   const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      const updated = deleteEntity('df_products', id);
-      setProducts(updated);
-      toast.success('Product deleted successfully');
-    }
+    setProductToDelete(id);
+    setShowConfirm(true);
   };
+
+  const confirmDelete = () => {
+    const updated = deleteEntity('df_products', productToDelete);
+    setProducts(updated);
+    toast.success("Product deleted successfully.");
+    setShowConfirm(false);
+  };
+
+  const columns = [
+    { Header: 'Product Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'SKU', accessor: 'sku', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.sku}</span> },
+    { Header: 'Category', accessor: 'category', sortable: true },
+    { Header: 'Cost', accessor: 'cost', sortable: true, Cell: row => `$${row.cost.toLocaleString()}` },
+    { Header: 'Price', accessor: 'price', sortable: true, Cell: row => <span style={{ fontWeight: 600 }}>${row.price.toLocaleString()}</span> },
+    { Header: 'Stock', accessor: 'stock', sortable: true, Cell: row => <Badge type={row.stock > 20 ? 'success' : 'warning'}>{row.stock} units</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" style={{ padding: '0.375rem 0.75rem' }} onClick={() => handleDelete(row.id)}>Delete</Button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Product Management</h1>
-        <Button onClick={() => handleOpenModal()}>+ Add Product</Button>
+        <div className="page-title-group">
+          <h1 className="page-title">Product Catalog</h1>
+          <p className="page-subtitle">Manage inventory SKUs, define base pricing, and organize product categories.</p>
+        </div>
+        <Button className="btn-primary">+ Add Product</Button>
       </div>
 
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>All Products</span>
-          <Input 
-            placeholder="Search products..." 
-            value={search} 
-            onChange={(e) => setSearch(e.target.value)} 
-            style={{ marginBottom: 0, width: '250px' }}
+      <div className="metric-grid">
+        <div className="metric-card active">
+          <div className="metric-header">
+            <span className="metric-title">TOTAL SKUS</span>
+            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+          </div>
+          <div className="metric-value text-brand">{products.length}</div>
+          <div className="metric-subtitle">Active catalog items</div>
+        </div>
+        
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">LOW STOCK</span>
+            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <div className="metric-value text-warning">{products.filter(p=>p.stock <= 20).length}</div>
+          <div className="metric-subtitle">Requires replenishment</div>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">AVG MARGIN</span>
+            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          </div>
+          <div className="metric-value text-success">
+            {products.length > 0 ? Math.round(products.reduce((sum, p) => sum + (((p.price || 0) - (p.cost || 0)) / (p.price || 1) * 100), 0) / products.length) : 0}%
+          </div>
+          <div className="metric-subtitle">Gross profit margin</div>
+        </div>
+      </div>
+
+      <div className="filter-bar">
+        <div className="filter-search">
+          <svg className="filter-search-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input 
+            type="text" 
+            className="filter-search-input"
+            placeholder="Search by Product Name or SKU..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Cost</th>
-                  <th>Price</th>
-                  <th>Margin</th>
-                  <th>Stock</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => {
-                  const { margin, percent } = calculateMargin(p.price, p.cost);
-                  return (
-                    <tr key={p.id}>
-                      <td style={{ fontWeight: 500 }}>{p.sku}</td>
-                      <td style={{ fontWeight: 500 }}>{p.name}</td>
-                      <td>{p.category}</td>
-                      <td>${p.cost.toFixed(2)}</td>
-                      <td>${p.price.toFixed(2)}</td>
-                      <td>
-                        <span style={{ color: percent < 15 ? 'var(--danger)' : 'var(--success)' }}>
-                          ${margin.toFixed(2)} ({percent}%)
-                        </span>
-                      </td>
-                      <td>
-                        <Badge type={p.stock > 20 ? 'Healthy' : p.stock > 0 ? 'Low Stock' : 'Critical'}>
-                          {p.stock}
-                        </Badge>
-                      </td>
-                      <td><Badge>{p.status}</Badge></td>
-                      <td>
-                        <Button variant="secondary" onClick={() => handleOpenModal(p)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem' }}>Edit</Button>
-                        <Button variant="danger" onClick={() => handleDelete(p.id)} style={{ padding: '0.25rem 0.5rem' }}>Delete</Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        
+        <select className="filter-select">
+          <option>Category: All</option>
+          <option>Software</option>
+          <option>Hardware</option>
+          <option>Services</option>
+        </select>
+        
+        <select className="filter-select">
+          <option>Stock Status: All</option>
+        </select>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingProduct ? 'Edit Product' : 'Create Product'}>
-        <form onSubmit={handleSubmit}>
-          <Input label="Product Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-          <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-            <div style={{ flex: 1 }}><Input label="SKU" value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} required /></div>
-            <div style={{ flex: 1 }}><Select label="Category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} options={['', ...categories.map(c => c.name)]} required /></div>
+      <div className="card" style={{ padding: 0 }}>
+        {filtered.length > 0 ? (
+          <DataTable columns={columns} data={filtered} />
+        ) : (
+          <div className="empty-state" style={{ minHeight: '250px', border: 'none', backgroundColor: 'transparent' }}>
+            <div className="empty-state-icon-container">
+              <svg className="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+            </div>
+            <h3 className="empty-state-title">No Products Found</h3>
+            <p className="empty-state-desc">Try adjusting your filters or search query.</p>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-            <div style={{ flex: 1 }}><Input label="Cost Price ($)" type="number" step="0.01" value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} required /></div>
-            <div style={{ flex: 1 }}><Input label="Selling Price ($)" type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} required /></div>
-          </div>
-          
-          <div style={{ backgroundColor: 'var(--surface-secondary)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-4)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Calculated Margin:</span>
-            <strong>${calculateMargin(formData.price, formData.cost).margin.toFixed(2)} ({calculateMargin(formData.price, formData.cost).percent}%)</strong>
-          </div>
+        )}
+      </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-            <div style={{ flex: 1 }}><Input label="Stock Quantity" type="number" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} required /></div>
-            <div style={{ flex: 1 }}><Select label="Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={['Active', 'Inactive']} /></div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
-            <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit">Save Product</Button>
-          </div>
-        </form>
-      </Modal>
+      <ConfirmDialog 
+        isOpen={showConfirm} 
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? It will be removed from the active catalog."
+      />
     </div>
   );
 }

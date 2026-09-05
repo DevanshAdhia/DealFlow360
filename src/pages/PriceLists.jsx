@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
+import { Button, Input, Select, Badge, Modal, DataTable, ConfirmDialog } from '../components/common/UI';
 import { getPriceLists, saveEntity, deleteEntity } from '../services/storageService';
 
 function PriceLists() {
   const [priceLists, setPriceLists] = useState(() => getPriceLists());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingList, setEditingList] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  
   const [formData, setFormData] = useState({ name: '', tier: 'Standard', currency: 'USD', effective: '', expiry: '', status: 'Active' });
 
   const handleOpenModal = (list = null) => {
@@ -30,13 +32,30 @@ function PriceLists() {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this price list?')) {
-      const updated = deleteEntity('df_pricelists', id);
+  const executeDelete = () => {
+    if (deleteConfirmId) {
+      const updated = deleteEntity('df_pricelists', deleteConfirmId);
       setPriceLists(updated);
       toast.success('Price list deleted');
+      setDeleteConfirmId(null);
     }
   };
+
+  const columns = [
+    { Header: 'Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Tier', accessor: 'tier', sortable: true, Cell: row => <Badge type={row.tier === 'Enterprise' || row.tier === 'Platinum' ? 'success' : 'default'}>{row.tier}</Badge> },
+    { Header: 'Currency', accessor: 'currency', sortable: true },
+    { Header: 'Effective', accessor: 'effective', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.effective}</span> },
+    { Header: 'Expiry', accessor: 'expiry', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.expiry}</span> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" onClick={() => handleOpenModal(row)} style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" onClick={() => setDeleteConfirmId(row.id)} style={{ padding: '0.375rem 0.75rem' }}>Delete</Button>
+        </div>
+      ) 
+    }
+  ];
 
   return (
     <div>
@@ -47,22 +66,7 @@ function PriceLists() {
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>Tier</th><th>Currency</th><th>Effective</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {priceLists.map(pl => (
-                  <tr key={pl.id}>
-                    <td>{pl.name}</td><td>{pl.tier}</td><td>{pl.currency}</td><td>{pl.effective}</td><td>{pl.expiry}</td><td><Badge>{pl.status}</Badge></td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(pl)} style={{marginRight: '0.5rem', padding: '0.25rem 0.5rem'}}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(pl.id)} style={{padding: '0.25rem 0.5rem'}}>Delete</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={priceLists} emptyMessage="No price lists configured." emptyAction={<Button onClick={() => handleOpenModal()}>+ Create Price List</Button>} />
         </div>
       </div>
 
@@ -80,6 +84,14 @@ function PriceLists() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={executeDelete}
+        title="Delete Price List"
+        message="Are you sure you want to delete this price list? This may affect pending quotations."
+      />
     </div>
   );
 }

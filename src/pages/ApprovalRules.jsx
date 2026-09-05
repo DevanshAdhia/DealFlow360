@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
+import { Button, Input, Select, Badge, Modal, DataTable, ConfirmDialog } from '../components/common/UI';
 import { getApprovalRules, saveEntity, deleteEntity, getRoles } from '../services/storageService';
 
 function ApprovalRules() {
@@ -9,6 +9,8 @@ function ApprovalRules() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  
   const [formData, setFormData] = useState({ name: '', condition: 'Discount', operator: 'Greater Than', value: 0, role: '', priority: 1, status: 'Active' });
 
   const conditions = ['Discount', 'Margin', 'Risk Score', 'Quote Value'];
@@ -27,10 +29,7 @@ function ApprovalRules() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.role) {
-      toast.error('Name and Role are required');
-      return;
-    }
+    if (!formData.name || !formData.role) return toast.error('Name and Role are required');
     const isNew = !editingRule;
     const entity = { ...formData, id: isNew ? undefined : editingRule.id, value: Number(formData.value), priority: Number(formData.priority) };
     const updated = saveEntity('df_approval_rules', entity, isNew);
@@ -39,13 +38,29 @@ function ApprovalRules() {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this rule?')) {
-      const updated = deleteEntity('df_approval_rules', id);
+  const executeDelete = () => {
+    if (deleteConfirmId) {
+      const updated = deleteEntity('df_approval_rules', deleteConfirmId);
       setRules(updated);
       toast.success('Rule deleted');
+      setDeleteConfirmId(null);
     }
   };
+
+  const columns = [
+    { Header: 'Rule Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Condition', accessor: 'condition', sortable: false, Cell: row => <span style={{fontFamily: 'monospace', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.875rem'}}>IF {row.condition} {row.operator} {row.value}</span> },
+    { Header: 'Approver Role', accessor: 'role', sortable: true },
+    { Header: 'Priority', accessor: 'priority', sortable: true },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" onClick={() => handleOpenModal(row)} style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" onClick={() => setDeleteConfirmId(row.id)} style={{ padding: '0.375rem 0.75rem' }}>Delete</Button>
+        </div>
+      ) 
+    }
+  ];
 
   return (
     <div>
@@ -56,35 +71,7 @@ function ApprovalRules() {
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Rule Name</th>
-                  <th>Condition</th>
-                  <th>Approver Role</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map(r => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 500 }}>{r.name}</td>
-                    <td><span style={{fontFamily: 'monospace', background: 'var(--surface-secondary)', padding: '2px 6px', borderRadius: '4px'}}>IF {r.condition} {r.operator} {r.value}</span></td>
-                    <td>{r.role}</td>
-                    <td>{r.priority}</td>
-                    <td><Badge>{r.status}</Badge></td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(r)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem' }}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(r.id)} style={{ padding: '0.25rem 0.5rem' }}>Delete</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={rules} emptyMessage="No approval rules configured." emptyAction={<Button onClick={() => handleOpenModal()}>+ Create Rule</Button>} />
         </div>
       </div>
 
@@ -103,6 +90,14 @@ function ApprovalRules() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={executeDelete}
+        title="Delete Approval Rule"
+        message="Are you sure you want to delete this approval rule? It may change how future quotations are routed."
+      />
     </div>
   );
 }

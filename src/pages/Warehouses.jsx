@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Badge } from '../components/common/UI';
+import { Button, Input, Badge, DataTable } from '../components/common/UI';
 import { getWarehouses } from '../services/storageService';
 
 function Warehouses() {
@@ -10,6 +10,18 @@ function Warehouses() {
     w.name.toLowerCase().includes(search.toLowerCase()) || 
     w.location.toLowerCase().includes(search.toLowerCase())
   );
+
+  const columns = [
+    { Header: 'Name', accessor: 'name', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.name}</strong> },
+    { Header: 'Location', accessor: 'location', sortable: true, Cell: row => <span style={{ color: 'var(--text-secondary)' }}>{row.location}</span> },
+    { Header: 'Manager', accessor: 'manager', sortable: true },
+    { Header: 'Capacity', accessor: 'capacity', sortable: true },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <Button variant="secondary" style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+      )
+    }
+  ];
 
   return (
     <div>
@@ -24,20 +36,7 @@ function Warehouses() {
           <Input placeholder="Search locations..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 0 }} />
         </div>
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>Location</th><th>Manager</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {filtered.map(w => (
-                  <tr key={w.id}>
-                    <td><strong>{w.name}</strong></td><td>{w.location}</td><td>{w.manager}</td>
-                    <td>{w.capacity}</td><td><Badge>{w.status}</Badge></td>
-                    <td><Button variant="secondary" style={{padding: '0.25rem 0.5rem'}}>Edit</Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={filtered} emptyMessage="No warehouses found." />
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { Button, Input, Select, Badge, Modal } from '../components/common/UI';
+import { Button, Input, Select, Badge, Modal, DataTable, ConfirmDialog } from '../components/common/UI';
 import { getDiscountRules, saveEntity, deleteEntity, getCategories } from '../services/storageService';
 
 function DiscountRules() {
@@ -9,6 +9,8 @@ function DiscountRules() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  
   const [formData, setFormData] = useState({ tier: 'Standard', category: '', maxDiscount: 0, minMargin: 0, priority: 1, status: 'Active' });
 
   const handleOpenModal = (rule = null) => {
@@ -24,10 +26,7 @@ function DiscountRules() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.tier || !formData.category) {
-      toast.error('Tier and Category are required');
-      return;
-    }
+    if (!formData.tier || !formData.category) return toast.error('Tier and Category are required');
     const isNew = !editingRule;
     const entity = { ...formData, id: isNew ? undefined : editingRule.id, maxDiscount: Number(formData.maxDiscount), minMargin: Number(formData.minMargin), priority: Number(formData.priority) };
     const updated = saveEntity('df_discount_rules', entity, isNew);
@@ -36,13 +35,30 @@ function DiscountRules() {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Delete this rule?')) {
-      const updated = deleteEntity('df_discount_rules', id);
+  const executeDelete = () => {
+    if (deleteConfirmId) {
+      const updated = deleteEntity('df_discount_rules', deleteConfirmId);
       setRules(updated);
       toast.success('Rule deleted');
+      setDeleteConfirmId(null);
     }
   };
+
+  const columns = [
+    { Header: 'Customer Tier', accessor: 'tier', sortable: true, Cell: row => <strong style={{fontWeight: 600, color: 'var(--secondary)'}}>{row.tier}</strong> },
+    { Header: 'Category', accessor: 'category', sortable: true },
+    { Header: 'Max Discount', accessor: 'maxDiscount', sortable: true, Cell: row => <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{row.maxDiscount}%</span> },
+    { Header: 'Min Margin', accessor: 'minMargin', sortable: true, Cell: row => <span style={{ color: 'var(--success)', fontWeight: 600 }}>{row.minMargin}%</span> },
+    { Header: 'Priority', accessor: 'priority', sortable: true },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status}</Badge> },
+    { Header: 'Actions', accessor: 'actions', sortable: false, Cell: row => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button variant="secondary" onClick={() => handleOpenModal(row)} style={{ padding: '0.375rem 0.75rem' }}>Edit</Button>
+          <Button variant="danger" onClick={() => setDeleteConfirmId(row.id)} style={{ padding: '0.375rem 0.75rem' }}>Delete</Button>
+        </div>
+      ) 
+    }
+  ];
 
   return (
     <div>
@@ -53,37 +69,7 @@ function DiscountRules() {
 
       <div className="card">
         <div className="card-body" style={{ padding: 0 }}>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Customer Tier</th>
-                  <th>Category</th>
-                  <th>Max Discount</th>
-                  <th>Min Margin</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map(r => (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 500 }}>{r.tier}</td>
-                    <td>{r.category}</td>
-                    <td>{r.maxDiscount}%</td>
-                    <td>{r.minMargin}%</td>
-                    <td>{r.priority}</td>
-                    <td><Badge>{r.status}</Badge></td>
-                    <td>
-                      <Button variant="secondary" onClick={() => handleOpenModal(r)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem' }}>Edit</Button>
-                      <Button variant="danger" onClick={() => handleDelete(r.id)} style={{ padding: '0.25rem 0.5rem' }}>Delete</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={rules} emptyMessage="No discount rules found." emptyAction={<Button onClick={() => handleOpenModal()}>+ Create Rule</Button>} />
         </div>
       </div>
 
@@ -101,6 +87,14 @@ function DiscountRules() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={executeDelete}
+        title="Delete Discount Rule"
+        message="Are you sure you want to delete this rule?"
+      />
     </div>
   );
 }
