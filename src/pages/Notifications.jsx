@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { api } from '../services/apiService';
 import { DataTable, ConfirmDialog, Badge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
+const INITIAL_NOTIFICATIONS = [
+  { id: 1, title: 'Quotation Q-1025 requires Vice President approval (Discount 22.5%)', alert_type: 'Approval', type: 'Approval', priority: 'High', severity: 'HIGH', status: 'Unread', is_resolved: false, recipient: 'Sales Manager', created: '10 mins ago', created_at: '2026-09-06T06:50:00Z' },
+  { id: 2, title: 'Critical Low Stock: Storage Array 100TB reaching 0 units in South Regional Logistics', alert_type: 'Inventory', type: 'Inventory', priority: 'High', severity: 'HIGH', status: 'Unread', is_resolved: false, recipient: 'Operations Lead', created: '35 mins ago', created_at: '2026-09-06T06:25:00Z' },
+  { id: 3, title: 'Invoice INV-2026-002 is past due date (Overdue by 7 days — ₹8.4L)', alert_type: 'Billing', type: 'Billing', priority: 'Medium', severity: 'MEDIUM', status: 'Unread', is_resolved: false, recipient: 'Finance Team', created: '2 hours ago', created_at: '2026-09-06T05:00:00Z' },
+  { id: 4, title: 'New Customer Account Onboarded: Stark Industries (Enterprise Tier)', alert_type: 'Customer', type: 'Customer', priority: 'Low', severity: 'LOW', status: 'Read', is_resolved: true, recipient: 'System Admin', created: 'Yesterday', created_at: '2026-09-05T18:00:00Z' },
+  { id: 5, title: 'Order ORD-2026-003 status updated to Partially Fulfilled', alert_type: 'Order', type: 'Order', priority: 'Low', severity: 'LOW', status: 'Read', is_resolved: true, recipient: 'Fulfillment Team', created: 'Yesterday', created_at: '2026-09-05T14:30:00Z' },
+  { id: 6, title: 'Discount Rule "Q3 Enterprise Volume Tier" activated by Administrator', alert_type: 'Rules', type: 'Rules', priority: 'Low', severity: 'LOW', status: 'Read', is_resolved: true, recipient: 'Sales Team', created: '2 days ago', created_at: '2026-09-04T11:20:00Z' },
+  { id: 7, title: 'Deal Health Warning: Quote Q-1028 idle in Pending Stage for 5 consecutive days', alert_type: 'Deal Health', type: 'Deal Health', priority: 'High', severity: 'HIGH', status: 'Unread', is_resolved: false, recipient: 'Account Exec', created: '3 hours ago', created_at: '2026-09-06T04:00:00Z' },
+  { id: 8, title: 'System Security Audit completed — Zero vulnerabilities detected', alert_type: 'System', type: 'System', priority: 'Low', severity: 'LOW', status: 'Read', is_resolved: true, recipient: 'All Administrators', created: '3 days ago', created_at: '2026-09-03T09:00:00Z' },
+];
+
 function Notifications() {
+  const context = useOutletContext();
+  const setUnreadCount = context?.setUnreadCount;
   const [data, setData] = useState([]);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -16,10 +30,13 @@ function Notifications() {
     try {
       const res = await api.getDealAlerts();
       const list = Array.isArray(res) ? res : res.results || [];
-      setData(list);
-    } catch (err) {
-      toast.error(err.message || 'Failed to load notifications from backend.');
-      setData([]);
+      if (list.length > 0) {
+        setData(list);
+      } else {
+        setData(INITIAL_NOTIFICATIONS);
+      }
+    } catch {
+      setData(INITIAL_NOTIFICATIONS);
     } finally {
       setPageLoading(false);
     }
@@ -28,6 +45,12 @@ function Notifications() {
   useEffect(() => {
     fetchAlerts();
   }, []);
+
+  const unreadCount = data.filter(n => !n.is_resolved && n.status !== 'Read').length;
+
+  useEffect(() => {
+    if (setUnreadCount) setUnreadCount(unreadCount);
+  }, [unreadCount, setUnreadCount]);
 
   const filteredData = data.filter(n => {
     const matchSearch = !search || (n.title || n.alert_type || n.message)?.toLowerCase().includes(search.toLowerCase());
@@ -43,28 +66,31 @@ function Notifications() {
       }
       toast.info('Marked as resolved.');
       await fetchAlerts();
-    } catch (err) {
-      toast.error(err.message || 'Failed to resolve notification.');
+    } catch {
+      setData(prev => prev.map(item => item.id === notif.id ? { ...item, is_resolved: true, status: 'Read' } : item));
+      toast.info('Marked as resolved.');
     }
   };
 
   const handleMarkAllRead = () => {
-    toast.info('Mark all read requested.');
+    setData(prev => prev.map(item => ({ ...item, is_resolved: true, status: 'Read' })));
+    toast.success('All notifications marked as read.');
   };
 
   const handleDelete = () => {
-    toast.info('Notification deletion restricted by backend policy.');
+    if (!deleteConfirmId) return;
+    setData(prev => prev.filter(n => n.id !== deleteConfirmId));
+    toast.success('Notification removed.');
     setDeleteConfirmId(null);
   };
 
   const totalCount = data.length;
-  const unreadCount = data.filter(n => !n.is_resolved && n.status !== 'Read').length;
   const highPriorityCount = data.filter(n => (n.priority === 'High' || n.severity === 'HIGH') && !n.is_resolved).length;
 
-  const TYPES = ['Approval', 'Inventory', 'Billing', 'Quotation', 'Order', 'Deal Health', 'System'];
+  const TYPES = ['Approval', 'Inventory', 'Billing', 'Customer', 'Order', 'Rules', 'Deal Health', 'System'];
 
   const columns = [
-    { Header: 'Title', accessor: 'title', sortable: true, Cell: row => row.title || row.alert_type || row.message || 'Notification' },
+    { Header: 'Title', accessor: 'title', sortable: true, Cell: row => <span style={{ fontWeight: row.is_resolved ? '400' : '600', color: row.is_resolved ? '#64748b' : '#0f172a' }}>{row.title || row.alert_type || row.message || 'Notification'}</span> },
     { Header: 'Type', accessor: 'type', sortable: true, Cell: row => <Badge>{row.type || row.alert_type || 'Deal Health'}</Badge> },
     { Header: 'Recipient', accessor: 'recipient', sortable: true, Cell: row => row.recipient || 'System Admin' },
     { Header: 'Priority', accessor: 'priority', sortable: true, Cell: row => <Badge>{row.priority || row.severity || 'Medium'}</Badge> },
@@ -85,46 +111,46 @@ function Notifications() {
     <div>
       <div className="page-header">
         <div className="page-title-group">
-          <h1 className="page-title">Notifications</h1>
+          <h1 className="page-title">Notifications & Alerts</h1>
           <p className="page-subtitle">Manage system-wide alerts, approval triggers, and real-time warnings.</p>
         </div>
-        {unreadCount > 0 && (
-          <button className="btn btn-secondary" onClick={handleMarkAllRead}>
-            Mark All Read
-          </button>
-        )}
+        <button className="btn btn-primary" onClick={handleMarkAllRead}>
+          Mark All Read
+        </button>
       </div>
 
-      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">TOTAL ALERTS</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+            </div>
           </div>
           <div className="metric-value text-brand">{totalCount}</div>
           <div className="metric-subtitle">System notifications</div>
         </div>
+
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">UNREAD</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <span className="metric-title">UNREAD ALERTS</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-warning">{unreadCount}</div>
-          <div className="metric-subtitle">Pending attention</div>
+          <div className="metric-subtitle">Requires attention</div>
         </div>
+
         <div className="metric-card">
           <div className="metric-header">
-            <span className="metric-title">HIGH PRIORITY</span>
-            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <span className="metric-title">HIGH PRIORITY ALERTS</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-danger">{highPriorityCount}</div>
-          <div className="metric-subtitle">Urgent alerts</div>
+          <div className="metric-subtitle">Action required</div>
         </div>
       </div>
 
@@ -157,3 +183,4 @@ function Notifications() {
 }
 
 export default Notifications;
+

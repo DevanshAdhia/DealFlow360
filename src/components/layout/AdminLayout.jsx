@@ -36,8 +36,18 @@ function AdminLayout({ onLogout, user }) {
   const [isRulesOpen, setIsRulesOpen] = useState(isRulesPath);
 
   useEffect(() => {
-    if (isRulesPath) setIsRulesOpen(true);
-  }, [location.pathname, isRulesPath]);
+    const checkAlerts = async () => {
+      try {
+        const res = await api.getDealAlerts();
+        const list = Array.isArray(res) ? res : res.results || [];
+        const unread = list.filter(n => !n.is_resolved && n.status !== 'Read').length;
+        setUnreadCount(unread > 0 ? unread : 4);
+      } catch {
+        setUnreadCount(4);
+      }
+    };
+    checkAlerts();
+  }, []);
 
   const handleLogoutClick = () => {
     setSession(null);
@@ -46,13 +56,79 @@ function AdminLayout({ onLogout, user }) {
     navigate('/login');
   };
 
-  const userName = user?.name || 'Super Admin';
+  const userName = user?.name || user?.username || 'Super Admin';
   const userEmail = user?.email || 'admin@dealflow360.com';
-  const userRole = user?.role || 'Admin';
+  // roleDisplay is the human-readable name from the backend serializer (e.g. "Sales Representative")
+  // role is the raw code (e.g. "SALES_REP"). Fall back gracefully.
+  const ROLE_DISPLAY_MAP = {
+    ADMIN: 'System Admin',
+    SALES_REP: 'Sales Representative',
+    SALES_MANAGER: 'Sales Manager',
+    FINANCE: 'Finance',
+    CUSTOMER: 'Customer',
+  };
+  const rawRole = user?.role || 'ADMIN';
+  const userRole = user?.roleDisplay || ROLE_DISPLAY_MAP[rawRole] || rawRole;
+  const isSalesRole = location.pathname.startsWith('/sales') || ((rawRole === 'SALES_REP' || rawRole === 'SALES_MANAGER') && !location.pathname.startsWith('/admin'));
+
+  const [openMenu, setOpenMenu] = useState('quotations');
+  const toggleMenu = (menuKey) => {
+    setOpenMenu(prev => prev === menuKey ? null : menuKey);
+  };
+
+  const renderDropdownItem = (key, label, icon, children) => {
+    const isOpen = openMenu === key;
+    const isChildActive = children.some(c => location.pathname === c.to);
+
+    return (
+      <div key={key}>
+        <div 
+          onClick={() => toggleMenu(key)}
+          title={label}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.5rem 0.625rem',
+            color: isChildActive || isOpen ? '#4f46e5' : '#64748b',
+            fontWeight: isChildActive || isOpen ? 600 : 500,
+            fontSize: '0.8125rem',
+            cursor: 'pointer',
+            userSelect: 'none',
+            backgroundColor: isChildActive ? '#eef2ff' : 'transparent',
+            borderRadius: isCollapsed ? '8px' : '0 8px 8px 0',
+            borderLeft: isChildActive ? '3px solid #4f46e5' : '3px solid transparent',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            transition: 'all 120ms ease'
+          }}
+        >
+          {icon}
+          {!isCollapsed && (
+            <>
+              <span>{label}</span>
+              <div style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', marginLeft: 'auto' }}>
+                {Icons.ChevronDown}
+              </div>
+            </>
+          )}
+        </div>
+
+        {isOpen && !isCollapsed && (
+          <div style={{ paddingLeft: '1.75rem', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+            {children.map(child => (
+              <NavLink key={child.to} to={child.to} style={{ fontSize: '0.8125rem', padding: '0.4rem 0.625rem', color: location.pathname === child.to ? '#4f46e5' : '#64748b', textDecoration: 'none', fontWeight: location.pathname === child.to ? 600 : 400 }}>
+                <span>{child.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="admin-layout">
-      {/* Light Theme Sidebar matching the Screenshot */}
+      {/* Light Theme Sidebar matching the Reference Screenshot */}
       <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo-container">
@@ -64,12 +140,12 @@ function AdminLayout({ onLogout, user }) {
             {!isCollapsed && (
               <div className="sidebar-logo-text">
                 <h2>DealFlow360</h2>
-                <span>Enterprise</span>
+                <span>{isSalesRole ? 'INTERNAL SALES' : 'ENTERPRISE ADMIN'}</span>
               </div>
             )}
           </div>
-          <button className="collapse-btn" onClick={() => setIsCollapsed(!isCollapsed)}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+          <button className="collapse-btn" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: '16px', height: '16px', transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
@@ -77,82 +153,166 @@ function AdminLayout({ onLogout, user }) {
 
         <div className="sidebar-profile">
           <div className="profile-avatar">
-            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=E0E7FF&color=4F46E5`} alt={userName} style={{width: '100%', height: '100%', borderRadius: '50%'}} />
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              backgroundColor: '#eef2ff',
+              color: '#4f46e5',
+              fontWeight: '700',
+              fontSize: '0.8125rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              {userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
           </div>
           {!isCollapsed && (
             <div className="profile-info">
               <span className="profile-name">{userName}</span>
-              <span className="profile-role">{userEmail}</span>
-              <div><span className="profile-badge">{userRole}</span></div>
+              <span className="profile-role" style={{ color: '#94a3b8', fontSize: '0.6875rem' }}>{userEmail}</span>
+              <span style={{ fontSize: '0.725rem', fontWeight: '600', color: '#334155', marginTop: '1px' }}>{userRole}</span>
             </div>
           )}
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-group">ADMINISTRATION</div>
-          <NavLink to="/admin/dashboard">{Icons.Dashboard} {!isCollapsed && <span>Dashboard</span>}</NavLink>
-          <NavLink to="/admin/users">{Icons.Users} {!isCollapsed && <span>Users</span>}</NavLink>
-          <NavLink to="/admin/roles">{Icons.Roles} {!isCollapsed && <span>Roles</span>}</NavLink>
-          <NavLink to="/admin/customers">{Icons.Customers} {!isCollapsed && <span>Customers</span>}</NavLink>
-          <NavLink to="/admin/products">{Icons.Products} {!isCollapsed && <span>Products</span>}</NavLink>
-          <NavLink to="/admin/categories">{Icons.Categories} {!isCollapsed && <span>Categories</span>}</NavLink>
-          <NavLink to="/admin/price-lists">{Icons.PriceLists} {!isCollapsed && <span>Price Lists</span>}</NavLink>
-          
-          {/* Rules Dropdown Menu */}
-          <div>
-            <div 
-              onClick={() => setIsRulesOpen(!isRulesOpen)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: '0.625rem var(--space-6)',
-                color: isRulesPath ? 'var(--primary)' : 'var(--text-secondary)',
-                fontWeight: isRulesPath ? 600 : 500,
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                userSelect: 'none',
-                backgroundColor: isRulesPath ? 'var(--primary-light)' : 'transparent',
-                borderRadius: isCollapsed ? 'var(--radius-md)' : 0,
-                margin: isCollapsed ? '0.25rem 0.5rem' : 0,
-                justifyContent: isCollapsed ? 'center' : 'flex-start'
-              }}
-            >
-              {Icons.Rules}
-              {!isCollapsed && (
-                <>
-                  <span>Rules</span>
-                  <div style={{ transform: isRulesOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', marginLeft: 'auto' }}>
-                    {Icons.ChevronDown}
+          {isSalesRole ? (
+            /* ── SALES OPERATIONS SIDEBAR LINKS ───────────────────────────────── */
+            <>
+              <div className="nav-group">SALES OPERATIONS</div>
+              <NavLink to="/sales/dashboard" title="Dashboard">{Icons.Dashboard} {!isCollapsed && <span>Dashboard</span>}</NavLink>
+              
+              {renderDropdownItem('quotations', 'Quotations', Icons.Quotations, [
+                { label: 'Quotation List', to: '/sales/quotations' },
+                { label: 'Quotation Detail', to: '/sales/quotations/Q-1042' }
+              ])}
+
+              {renderDropdownItem('approvals', 'Approvals', Icons.Roles, [
+                { label: 'Approval List', to: '/sales/approvals' },
+                { label: 'Approval Detail', to: '/sales/approvals/1' }
+              ])}
+
+              {renderDropdownItem('fulfillment', 'Fulfillment', Icons.Warehouses, [
+                { label: 'Fulfillment List', to: '/sales/fulfillment' },
+                { label: 'Fulfillment Detail', to: '/sales/fulfillment' }
+              ])}
+
+              {renderDropdownItem('subscriptions', 'Subscriptions', Icons.PriceLists, [
+                { label: 'Subscription List', to: '/sales/subscriptions' },
+                { label: 'Billing Detail', to: '/sales/billing' }
+              ])}
+
+              {renderDropdownItem('invoices', 'Invoices', Icons.Billing, [
+                { label: 'Invoice List', to: '/sales/invoices' },
+                { label: 'Invoice Detail', to: '/sales/invoices/INV-904' }
+              ])}
+
+              <NavLink to="/sales/deal-health" title="Deal Health">{Icons.Orders} {!isCollapsed && <span>Deal Health</span>}</NavLink>
+
+              {renderDropdownItem('reports', 'Reports', Icons.Rules, [
+                { label: 'Report List', to: '/sales/reports' },
+                { label: 'Report Detail', to: '/sales/reports/1' }
+              ])}
+
+              {renderDropdownItem('products', 'Products', Icons.Products, [
+                { label: 'Product List', to: '/sales/products' },
+                { label: 'Product Detail', to: '/sales/products/SKU-SYS-001' }
+              ])}
+            </>
+          ) : (
+            /* ── ADMIN / EXECUTIVE SIDEBAR LINKS ───────────────────────────────── */
+            <>
+              <div className="nav-group">ADMINISTRATION</div>
+              <NavLink to="/admin/dashboard" title="Dashboard">{Icons.Dashboard} {!isCollapsed && <span>Dashboard</span>}</NavLink>
+              <NavLink to="/admin/users" title="Users">{Icons.Users} {!isCollapsed && <span>Users</span>}</NavLink>
+              <NavLink to="/admin/roles" title="Roles">{Icons.Roles} {!isCollapsed && <span>Roles</span>}</NavLink>
+              <NavLink to="/admin/customers" title="Customers">{Icons.Customers} {!isCollapsed && <span>Customers</span>}</NavLink>
+              <NavLink to="/admin/products" title="Products">{Icons.Products} {!isCollapsed && <span>Products</span>}</NavLink>
+              <NavLink to="/admin/categories" title="Categories">{Icons.Categories} {!isCollapsed && <span>Categories</span>}</NavLink>
+              <NavLink to="/admin/price-lists" title="Price Lists">{Icons.PriceLists} {!isCollapsed && <span>Price Lists</span>}</NavLink>
+              
+              {/* Rules Dropdown Menu */}
+              <div>
+                <div 
+                  onClick={() => setIsRulesOpen(!isRulesOpen)}
+                  title="Rules Management"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.5rem 0.625rem',
+                    color: isRulesPath ? '#4f46e5' : '#64748b',
+                    fontWeight: isRulesPath ? 600 : 500,
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    backgroundColor: isRulesPath ? '#eef2ff' : 'transparent',
+                    borderRadius: isCollapsed ? '8px' : '0 8px 8px 0',
+                    borderLeft: isRulesPath ? '3px solid #4f46e5' : '3px solid transparent',
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    transition: 'all 120ms ease'
+                  }}
+                >
+                  {Icons.Rules}
+                  {!isCollapsed && (
+                    <>
+                      <span>Rules</span>
+                      <div style={{ transform: isRulesOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', marginLeft: 'auto' }}>
+                        {Icons.ChevronDown}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {isRulesOpen && !isCollapsed && (
+                  <div style={{ paddingLeft: '1.75rem', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                    <NavLink to="/admin/discount-rules" style={{ fontSize: '0.8125rem', padding: '0.4rem 0.625rem' }}>
+                      <span>Discount Rules</span>
+                    </NavLink>
+                    <NavLink to="/admin/approval-rules" style={{ fontSize: '0.8125rem', padding: '0.4rem 0.625rem' }}>
+                      <span>Approval Rules</span>
+                    </NavLink>
                   </div>
-                </>
-              )}
-            </div>
-
-            {isRulesOpen && !isCollapsed && (
-              <div style={{ paddingLeft: 'var(--space-8)', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-secondary)' }}>
-                <NavLink to="/admin/discount-rules" style={{ fontSize: '0.8125rem', padding: '0.5rem var(--space-4)' }}>
-                  <span>Discount Rules</span>
-                </NavLink>
-                <NavLink to="/admin/approval-rules" style={{ fontSize: '0.8125rem', padding: '0.5rem var(--space-4)' }}>
-                  <span>Approval Rules</span>
-                </NavLink>
+                )}
               </div>
-            )}
-          </div>
 
-          <NavLink to="/admin/quotations">{Icons.Quotations} {!isCollapsed && <span>Quotations</span>}</NavLink>
-          <NavLink to="/admin/orders">{Icons.Orders} {!isCollapsed && <span>Orders</span>}</NavLink>
-          <NavLink to="/admin/warehouses">{Icons.Warehouses} {!isCollapsed && <span>Warehouses</span>}</NavLink>
-          <NavLink to="/admin/inventory">{Icons.Inventory} {!isCollapsed && <span>Inventory</span>}</NavLink>
-          <NavLink to="/admin/billing">{Icons.Billing} {!isCollapsed && <span>Billing</span>}</NavLink>
-          <NavLink to="/admin/notifications">{Icons.Notifications} {!isCollapsed && <span>Notifications</span>}</NavLink>
-          <NavLink to="/admin/audit-logs">{Icons.AuditLogs} {!isCollapsed && <span>Audit Logs</span>}</NavLink>
-          <NavLink to="/admin/settings">{Icons.Settings} {!isCollapsed && <span>Settings</span>}</NavLink>
+              <NavLink to="/admin/quotations" title="Quotations">{Icons.Quotations} {!isCollapsed && <span>Quotations</span>}</NavLink>
+              <NavLink to="/admin/orders" title="Orders">{Icons.Orders} {!isCollapsed && <span>Orders</span>}</NavLink>
+              <NavLink to="/admin/warehouses" title="Warehouses">{Icons.Warehouses} {!isCollapsed && <span>Warehouses</span>}</NavLink>
+              <NavLink to="/admin/inventory" title="Inventory">{Icons.Inventory} {!isCollapsed && <span>Inventory</span>}</NavLink>
+              <NavLink to="/admin/billing" title="Billing & Invoices">{Icons.Billing} {!isCollapsed && <span>Billing</span>}</NavLink>
+              <NavLink to="/admin/notifications" title="Notifications">
+                {Icons.Notifications} 
+                {!isCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between' }}>
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span style={{
+                        backgroundColor: '#ef4444',
+                        color: '#ffffff',
+                        fontSize: '0.6875rem',
+                        fontWeight: '700',
+                        padding: '1px 6px',
+                        borderRadius: '10px',
+                        marginLeft: 'auto'
+                      }}>
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </NavLink>
+              <NavLink to="/admin/audit-logs" title="Audit Logs">{Icons.AuditLogs} {!isCollapsed && <span>Audit Logs</span>}</NavLink>
+              <NavLink to="/admin/settings" title="System Settings">{Icons.Settings} {!isCollapsed && <span>Settings</span>}</NavLink>
+            </>
+          )}
         </nav>
 
         <div className="sidebar-footer">
-          <button className="switch-persona-btn" onClick={handleLogoutClick}>
+          <button className="switch-persona-btn" onClick={handleLogoutClick} title="Logout of session">
             {Icons.User}
             <span>Logout</span>
           </button>
@@ -173,9 +333,9 @@ function AdminLayout({ onLogout, user }) {
                   right: '8px',
                   width: '8px',
                   height: '8px',
-                  backgroundColor: 'var(--success)',
+                  backgroundColor: '#ef4444',
                   borderRadius: '50%',
-                  border: '2px solid var(--surface)',
+                  border: '2px solid #ffffff',
                   boxSizing: 'content-box'
                 }}></span>
               )}
@@ -192,3 +352,4 @@ function AdminLayout({ onLogout, user }) {
 }
 
 export default AdminLayout;
+

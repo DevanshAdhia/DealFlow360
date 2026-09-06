@@ -1,0 +1,62 @@
+export const MOCK_PRODUCTS = [
+  {
+    id: 'SKU-SYS-001',
+    productCode: 'SKU-SYS-001',
+    name: 'Dell PowerEdge R750 Enterprise Server',
+    description: 'Dual-socket 2U rack server powering high-performance compute and virtualization workloads.',
+    unitPrice: 2800000,
+    listPrice: 2800000,
+    costPrice: 1680000,
+    categoryName: 'Hardware & Servers',
+    categoryCode: 'HW',
+    sku: 'HW-SRV-750',
+    stock: 45,
+    quantityOnHand: 45,
+    availableQuantity: 40,
+    status: 'ACTIVE',
+    gstRate: 18,
+    isSubscription: false,
+    variants: [
+      { id: 'V1', name: '64GB RAM / 2TB SSD', sku: 'HW-SRV-750-V1', price: 2800000 },
+      { id: 'V2', name: '128GB RAM / 4TB SSD', sku: 'HW-SRV-750-V2', price: 3400000 }
+    ]
+  },
+  {
+    id: 'SKU-SYS-002',
+    productCode: 'SKU-SYS-002',
+    name: 'Cisco Catalyst 9300 48-Port Switch',
+    description: 'Stackable enterprise switching platform with integrated security and IoT capabilities.',
+    unitPrice: 1250000,
+    listPrice: 1250000,
+    costPrice: 750000,
+    categoryName: 'Networking & Telecom',
+    categoryCode: 'NW',
+    sku: 'NW-SW-9300',
+    stock: 60,
+    quantityOnHand: 60,
+    availableQuantity: 55,
+    status: 'ACTIVE',
+    gstRate: 18,
+    isSubscription: false,
+    variants: []
+  },
+  {
+    id: 'SKU-SYS-003',
+    productCode: 'SKU-SYS-003',
+    name: 'Enterprise Cloud Platform License',
+    description: 'Annual cloud infrastructure management and security orchestration license.',
+    unitPrice: 800000,
+    listPrice: 800000,
+    costPrice: 240000,
+    categoryName: 'SaaS Subscriptions',
+    categoryCode: 'SW',
+    sku: 'SW-CLD-ENT',
+    stock: 999,
+    quantityOnHand: 999,
+    availableQuantity: 999,
+    status: 'ACTIVE',
+    gstRate: 18,
+    isSubscription: true,
+    variants: []
+  }
+];

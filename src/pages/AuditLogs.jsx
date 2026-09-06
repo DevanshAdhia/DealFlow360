@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
-import { DataTable } from '../components/common/UI';
+import { DataTable, Badge } from '../components/common/UI';
+
+const SAMPLE_AUDIT_LOGS = [
+  { id: 1, timestamp: '2026-09-06T06:30:00Z', user: 'Super Admin', role: 'Admin', action: 'User Login', entity: 'Auth', description: 'Interactive login session established for Super Admin' },
+  { id: 2, timestamp: '2026-09-06T05:28:00Z', user: 'Admin User', role: 'Admin', action: 'Quote Approved', entity: 'Quotations', description: 'Approved enterprise quote Q-1025 for Globex Inc' },
+  { id: 3, timestamp: '2026-09-06T04:15:00Z', user: 'Sarah Connor', role: 'Sales Manager', action: 'Quote Created', entity: 'Quotations', description: 'Created quote Q-1024 for Acme Corp' },
+  { id: 4, timestamp: '2026-09-05T23:45:00Z', user: 'Mike Ross', role: 'Operations', action: 'Inventory Adjusted', entity: 'Inventory', description: 'Adjusted stock for ProServer X1 (+10 units in Main Hub)' },
+  { id: 5, timestamp: '2026-09-05T22:10:00Z', user: 'Jane Smith', role: 'Finance', action: 'Invoice Paid', entity: 'Billing', description: 'Marked invoice INV-2026-003 as Settled/Paid' },
+  { id: 6, timestamp: '2026-09-05T21:00:00Z', user: 'Lisa Park', role: 'Operations', action: 'Warehouse Updated', entity: 'Warehouses', description: 'Updated capacity and manager details for North Fulfillment Center' },
+  { id: 7, timestamp: '2026-09-05T19:30:00Z', user: 'John Doe', role: 'Sales Representative', action: 'Customer Created', entity: 'Customers', description: 'Onboarded new Enterprise account Stark Industries' },
+  { id: 8, timestamp: '2026-09-05T18:15:00Z', user: 'Super Admin', role: 'Admin', action: 'Rule Updated', entity: 'Rules', description: 'Updated Discount Rule ceiling (25%) for Gold Tier Accounts' },
+  { id: 9, timestamp: '2026-09-05T16:00:00Z', user: 'David Kim', role: 'Sales Representative', action: 'Product Added', entity: 'Products', description: 'Added SKU-SRV-901 Enterprise Server Blade to active catalog' },
+  { id: 10, timestamp: '2026-09-05T14:20:00Z', user: 'Super Admin', role: 'Admin', action: 'Role Modified', entity: 'Roles', description: 'Granted full RBAC Quotations permission to Sales Manager role' },
+];
 
 function AuditLogs() {
-  const [data] = useState([]);
+  const [data] = useState(SAMPLE_AUDIT_LOGS);
   const [search, setSearch] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [filterAction, setFilterAction] = useState('');
@@ -26,54 +39,57 @@ function AuditLogs() {
   };
 
   const totalLogs = data.length;
-  const todayLogs = data.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length;
+  const todayLogs = data.filter(l => l.timestamp.startsWith('2026-09-06')).length;
   const uniqueActors = uniqueUsers.length;
 
   const columns = [
-    { Header: 'Timestamp', accessor: 'timestamp', sortable: true, Cell: row => <span style={{ fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatDate(row.timestamp)}</span> },
-    { Header: 'User', accessor: 'user', sortable: true },
-    { Header: 'Role', accessor: 'role', sortable: true },
-    { Header: 'Action', accessor: 'action', sortable: true },
-    { Header: 'Entity', accessor: 'entity', sortable: true },
-    { Header: 'Description', accessor: 'description', sortable: false, Cell: row => <span style={{ fontSize: '0.8rem', color: '#374151' }}>{row.description}</span> }
+    { Header: 'Timestamp', accessor: 'timestamp', sortable: true, Cell: row => <span style={{ fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{formatDate(row.timestamp)}</span> },
+    { Header: 'User', accessor: 'user', sortable: true, Cell: row => <strong style={{ color: 'var(--primary)' }}>{row.user}</strong> },
+    { Header: 'Role', accessor: 'role', sortable: true, Cell: row => <Badge>{row.role}</Badge> },
+    { Header: 'Action', accessor: 'action', sortable: true, Cell: row => <span style={{ fontWeight: '600', color: '#0f172a' }}>{row.action}</span> },
+    { Header: 'Entity', accessor: 'entity', sortable: true, Cell: row => <Badge>{row.entity}</Badge> },
+    { Header: 'Description', accessor: 'description', sortable: false, Cell: row => <span style={{ fontSize: '0.8125rem', color: '#334155' }}>{row.description}</span> }
   ];
 
   return (
     <div>
       <div className="page-header">
         <div className="page-title-group">
-          <h1 className="page-title">Audit Logs</h1>
+          <h1 className="page-title">Audit Trail & Compliance</h1>
           <p className="page-subtitle">Complete, immutable compliance trail of all administrative events and system actions.</p>
         </div>
+        <button onClick={() => window.print()} className="btn btn-primary">Export Log Report</button>
       </div>
 
-      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">TOTAL AUDIT LOGS</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-brand">{totalLogs}</div>
           <div className="metric-subtitle">Recorded system actions</div>
         </div>
+
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">TODAY'S ACTIVITY</span>
-            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-success">{todayLogs}</div>
           <div className="metric-subtitle">Events logged today</div>
         </div>
+
         <div className="metric-card">
           <div className="metric-header">
             <span className="metric-title">UNIQUE ACTORS</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-warning">{uniqueActors}</div>
           <div className="metric-subtitle">Active user accounts</div>
@@ -110,3 +126,4 @@ function AuditLogs() {
 }
 
 export default AuditLogs;
+

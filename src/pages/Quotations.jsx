@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/apiService';
-import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
+import { DataTable, Modal, ConfirmDialog, Badge, QuickStatusBadge } from '../components/common/UI';
 import { toast } from 'react-toastify';
 
 const STATUSES = ['Draft', 'Pending', 'Negotiating', 'Approved', 'Rejected', 'Confirmed'];
@@ -32,12 +32,39 @@ function Quotations() {
   useEffect(() => {
     fetchQuotations();
   }, []);
-  useEffect(() => { setTablePage(1); }, [search, filterStatus, filterRisk]);
+  const matchStatus = (quoteStatus, targetFilter) => {
+    if (!targetFilter) return true;
+    const qStat = String(quoteStatus || '').toUpperCase().trim();
+    const fStat = String(targetFilter || '').toUpperCase().trim();
+
+    if (fStat === 'REJECTED') {
+      return qStat === 'REJECTED' || qStat === 'DECLINED' || qStat === 'REJECTED_BY_CUSTOMER' || qStat === 'CANCELLED';
+    }
+    if (fStat === 'APPROVED') {
+      return qStat === 'APPROVED' || qStat === 'ACCEPTED';
+    }
+    if (fStat === 'CONFIRMED') {
+      return qStat === 'CONFIRMED' || qStat === 'ACCEPTED';
+    }
+    if (fStat === 'PENDING') {
+      return qStat === 'PENDING' || qStat === 'SUBMITTED' || qStat === 'UNDER_REVIEW' || qStat === 'APPROVAL_REQUIRED';
+    }
+    if (fStat === 'NEGOTIATING') {
+      return qStat === 'NEGOTIATING' || qStat === 'UNDER_NEGOTIATION' || qStat === 'REVISED';
+    }
+    if (fStat === 'DRAFT') {
+      return qStat === 'DRAFT' || qStat === 'NEW';
+    }
+
+    return qStat === fStat || qStat.includes(fStat);
+  };
+
   const filtered = data.filter(q => {
-    const qNum = q.quotation_number || q.quote_number || q.quoteId || '';
+    const qNum = q.quotation_number || q.quote_number || q.quoteId || q.id || '';
     const custName = q.customer_name || q.customer || '';
-    const s = !search || qNum.toLowerCase().includes(search.toLowerCase()) || custName.toLowerCase().includes(search.toLowerCase());
-    return s && (!filterStatus || q.status === filterStatus) && (!filterRisk || q.risk_level === filterRisk || q.risk === filterRisk);
+    const matchesSearch = !search || qNum.toLowerCase().includes(search.toLowerCase()) || custName.toLowerCase().includes(search.toLowerCase());
+    const matchesRisk = !filterRisk || (q.risk_level || q.risk || '').toLowerCase() === filterRisk.toLowerCase();
+    return matchesSearch && matchStatus(q.status, filterStatus) && matchesRisk;
   });
 
   const handleStatusChange = async (q, ns) => {
@@ -45,7 +72,7 @@ function Quotations() {
       if (ns === 'Approved') {
         await api.submitQuotation(q.id);
       }
-      toast.success(`Quote status updated to ${ns.toLowerCase()}.`);
+      toast.success(`Quote status updated to ${ns}.`);
       await fetchQuotations();
     } catch (err) {
       toast.error(err.message || 'Failed to update quotation status.');
@@ -67,10 +94,21 @@ function Quotations() {
     { Header: 'Customer', accessor: 'customer_name', sortable: true, Cell: row => row.customer_name || row.customer || 'N/A' },
     { Header: 'Amount', accessor: 'total_amount', sortable: true, Cell: row => `₹${Number(row.total_amount ?? row.amount ?? 0).toLocaleString('en-IN')}` },
     { Header: 'Discount', accessor: 'discount_percent', sortable: true, Cell: row => `${row.discount_percent ?? row.discount_percentage ?? row.discount ?? 0}%` },
-    { Header: 'Risk', accessor: 'risk_level', sortable: true, Cell: row => <Badge>{row.risk_level || row.risk || 'Low'}</Badge> },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || 'DRAFT'}</Badge> },
+    { Header: 'Risk', accessor: 'risk_level', sortable: true, Cell: row => {
+        const risk = row.risk_level || row.risk || 'Low';
+        const variant = risk === 'Critical' || risk === 'High' ? 'danger' : risk === 'Medium' ? 'warning' : 'success';
+        return <Badge variant={variant}>{risk}</Badge>;
+      } 
+    },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => (
+        <QuickStatusBadge 
+          currentStatus={row.status || 'Draft'} 
+          onStatusChange={(ns) => handleStatusChange(row, ns)} 
+        />
+      ) 
+    },
     { Header: 'Actions', accessor: 'actions', sortable: false,
-      Cell: row => <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      Cell: row => <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
         <button onClick={() => setViewItem(row)} className="btn-table-action edit">View</button>
         {row.status === 'Pending' && <button onClick={() => handleStatusChange(row, 'Approved')} className="btn-table-action success">Approve</button>}
         {row.status === 'Pending' && <button onClick={() => handleStatusChange(row, 'Rejected')} className="btn-table-action danger">Reject</button>}
@@ -84,39 +122,44 @@ function Quotations() {
     <div>
       <div className="page-header">
         <div className="page-title-group">
-          <h1 className="page-title">Quotations</h1>
-          <p className="page-subtitle">Monitor and manage all sales quotations, approvals, risk assessments and pipeline.</p>
+          <h1 className="page-title">Quotation Management</h1>
+          <p className="page-subtitle">Track, review, and approve commercial sales quotations.</p>
         </div>
+        <button onClick={() => toast.info('New quotation builder opened')} className="btn btn-primary">+ Create Quotation</button>
       </div>
 
-      <div className="metric-grid">
+      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">TOTAL QUOTES</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <div className="metric-header">
+            <span className="metric-title">TOTAL QUOTES</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-brand">{totalCount}</div>
-          <div className="metric-subtitle">All-time quotes</div>
+          <div className="metric-subtitle">All-time quotations</div>
         </div>
+
         <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">PENDING APPROVAL</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div className="metric-header">
+            <span className="metric-title">PENDING APPROVAL</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-warning">{pendingCount}</div>
-          <div className="metric-subtitle">Awaiting review</div>
+          <div className="metric-subtitle">Awaiting managerial review</div>
         </div>
+
         <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">APPROVED / CONFIRMED</span>
-            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div className="metric-header">
+            <span className="metric-title">APPROVED & CONFIRMED</span>
+            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: '18px', height: '18px' }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
           </div>
           <div className="metric-value text-success">{approvedCount}</div>
-          <div className="metric-subtitle">Ready to order</div>
-        </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">PIPELINE VALUE</span>
-            <svg className="metric-icon text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-          </div>
-          <div className="metric-value text-danger">₹{(totalValue / 100000).toFixed(1)}L</div>
-          <div className="metric-subtitle">Total pipeline</div>
+          <div className="metric-subtitle">Ready to convert to order</div>
         </div>
       </div>
 
@@ -135,7 +178,7 @@ function Quotations() {
           </div>
         </div>
         {pageLoading ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading quotations from backend…</div>
+          <div style={{ padding: 'var(--space-6)', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading quotations from backend…</div>
         ) : (
           <DataTable columns={columns} data={filtered} emptyMessage="No quotations found." currentPage={tablePage} onPageChange={setTablePage} />
         )}
@@ -143,8 +186,8 @@ function Quotations() {
 
       <Modal isOpen={!!viewItem} onClose={() => setViewItem(null)} title={`Quote Detail — ${viewItem?.quotation_number || viewItem?.quote_number || viewItem?.id}`}>
         {viewItem && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
               {[
                 ['Quotation Number', viewItem.quotation_number || viewItem.quote_number || viewItem.id],
                 ['Customer', viewItem.customer_name || viewItem.customer || 'N/A'],
@@ -157,18 +200,25 @@ function Quotations() {
                 ['Created Date', viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('en-IN') : 'N/A'],
                 ['Expiry Date', viewItem.valid_until || 'N/A']
               ].map(([label, val]) => (
-                <div key={label}><div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{label}</div><div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827' }}>{val || 'N/A'}</div></div>
+                <div key={label}>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-1)' }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                    {val || 'N/A'}
+                  </div>
+                </div>
               ))}
             </div>
 
             {viewItem.notes && (
-              <div style={{ background: '#f9fafb', padding: '10px 12px', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#4b5563', marginBottom: '2px' }}>NOTES / PROJECT DETAILS</div>
-                <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>{viewItem.notes}</div>
+              <div style={{ background: 'var(--surface-secondary)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>NOTES / PROJECT DETAILS</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{viewItem.notes}</div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
               {viewItem.status === 'Pending' && <><button onClick={() => { handleStatusChange(viewItem, 'Approved'); setViewItem(null); }} className="btn btn-primary">Approve</button><button onClick={() => { handleStatusChange(viewItem, 'Rejected'); setViewItem(null); }} className="btn btn-danger">Reject</button></>}
               {viewItem.status === 'Approved' && <button onClick={() => { handleStatusChange(viewItem, 'Confirmed'); setViewItem(null); }} className="btn btn-primary">Confirm Order</button>}
               <button onClick={() => setViewItem(null)} className="btn btn-secondary">Close</button>

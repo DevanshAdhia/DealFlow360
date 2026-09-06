@@ -1,96 +1,132 @@
-// Live API & Session Storage Service
+// DealFlow360 — Storage Service Layer
 
-export const getFromStorage = (key, defaultVal = null) => {
-  try {
-    const val = localStorage.getItem(key);
-    return val ? JSON.parse(val) : defaultVal;
-  } catch (e) {
-    return defaultVal;
+export const STORAGE_KEYS = {
+  USERS: 'dealflow360_users',
+  ROLES: 'dealflow360_roles',
+  CUSTOMERS: 'dealflow360_customers',
+  CUSTOMER_TIERS: 'dealflow360_customer_tiers',
+  CATEGORIES: 'dealflow360_categories',
+  PRODUCTS: 'dealflow360_products',
+  PRICE_LISTS: 'dealflow360_price_lists',
+  PRICE_LIST_ITEMS: 'dealflow360_price_list_items',
+  DISCOUNT_RULES: 'dealflow360_discount_rules',
+  APPROVAL_RULES: 'dealflow360_approval_rules',
+  APPROVAL_LEVELS: 'dealflow360_approval_levels',
+  APPROVAL_RULE_STEPS: 'dealflow360_approval_rule_steps',
+  QUOTATIONS: 'dealflow360_quotations',
+  QUOTATION_ITEMS: 'dealflow360_quotation_items',
+  QUOTATION_VERSIONS: 'dealflow360_quotation_versions',
+  QUOTATION_COMMENTS: 'dealflow360_quotation_comments',
+  RECOMMENDATION_RULES: 'dealflow360_recommendation_rules',
+  NEGOTIATION_REQUESTS: 'dealflow360_negotiation_requests',
+  NEGOTIATION_ITEMS: 'dealflow360_negotiation_items',
+  ORDERS: 'dealflow360_orders',
+  FULFILLMENT_ORDERS: 'dealflow360_fulfillment_orders',
+  WAREHOUSES: 'dealflow360_warehouses',
+  SUBSCRIPTIONS: 'dealflow360_subscriptions',
+  BILLING_SCHEDULES: 'dealflow360_billing_schedules',
+  INVOICES: 'dealflow360_invoices',
+  PAYMENTS: 'dealflow360_payments',
+  DEAL_HEALTH: 'dealflow360_deal_health',
+};
+
+export const storageService = {
+  getData: (key) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+      console.warn(`storageService.getData fallback [] on [${key}]:`, err);
+      return [];
+    }
+  },
+
+  setData: (key, data) => {
+    try {
+      const safeArray = Array.isArray(data) ? data : [];
+      localStorage.setItem(key, JSON.stringify(safeArray));
+      return true;
+    } catch (err) {
+      console.error(`storageService.setData error on [${key}]:`, err);
+      return false;
+    }
+  },
+
+  addData: (key, item) => {
+    try {
+      const list = storageService.getData(key);
+      const updated = [item, ...list];
+      storageService.setData(key, updated);
+      return item;
+    } catch (err) {
+      console.error(`storageService.addData error on [${key}]:`, err);
+      return null;
+    }
+  },
+
+  updateData: (key, id, changes) => {
+    try {
+      const list = storageService.getData(key);
+      let updatedItem = null;
+      const updatedList = list.map(item => {
+        if (item.id === id || item.quotationNumber === id) {
+          updatedItem = { ...item, ...changes, updatedAt: new Date().toISOString() };
+          return updatedItem;
+        }
+        return item;
+      });
+      storageService.setData(key, updatedList);
+      return updatedItem;
+    } catch (err) {
+      console.error(`storageService.updateData error on [${key}, id:${id}]:`, err);
+      return null;
+    }
+  },
+
+  deleteData: (key, id) => {
+    try {
+      const list = storageService.getData(key);
+      const filtered = list.filter(item => item.id !== id && item.quotationNumber !== id);
+      storageService.setData(key, filtered);
+      return true;
+    } catch (err) {
+      console.error(`storageService.deleteData error on [${key}, id:${id}]:`, err);
+      return false;
+    }
+  },
+
+  seedInitialData: () => true,
+
+  getAllCollectionsSnapshot: () => {
+    const result = {};
+    Object.entries(STORAGE_KEYS).forEach(([name, key]) => {
+      result[name] = storageService.getData(key);
+    });
+    return result;
   }
 };
 
-export const setToStorage = (key, val) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-  } catch (e) {
-    console.error('Failed to save to localStorage', e);
-  }
-};
-
-// Purge any legacy mock storage keys
-export const initializeData = () => {
-  const keysToRemove = [
-    'df_data_version', 'df_users', 'df_roles', 'df_customers', 'df_categories',
-    'df_products', 'df_discount_rules', 'df_approval_rules', 'df_inventory',
-    'df_audit', 'df_settings', 'df_pricelists', 'df_quotations', 'df_orders',
-    'df_warehouses', 'df_invoices', 'df_notifications'
-  ];
-  keysToRemove.forEach(k => localStorage.removeItem(k));
-};
-
-// Authentication Session Management
 export const getSession = () => {
-  const token = localStorage.getItem('access_token');
-  const session = getFromStorage('df_session', null);
-  if (!token || !session) {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
     return null;
   }
-  return session;
 };
 
 export const setSession = (user) => {
-  if (user) {
-    setToStorage('df_session', user);
-  } else {
-    localStorage.removeItem('df_session');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-  }
+  try {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  } catch {}
 };
 
-// Data getters
-export const getUsers = () => getFromStorage('df_users', []);
-export const getRoles = () => getFromStorage('df_roles', []);
-export const getCustomers = () => getFromStorage('df_customers', []);
-export const getCategories = () => getFromStorage('df_categories', []);
-export const getProducts = () => getFromStorage('df_products', []);
-export const getDiscountRules = () => getFromStorage('df_discount_rules', []);
-export const getApprovalRules = () => getFromStorage('df_approval_rules', []);
-export const getInventory = () => getFromStorage('df_inventory', []);
-export const getAuditLogs = () => getFromStorage('df_audit', []);
-export const getSettings = () => getFromStorage('df_settings', {});
-export const setSettings = (settings) => setToStorage('df_settings', settings);
+export const initializeData = () => true;
 
-export const getPriceLists = () => getFromStorage('df_pricelists', []);
-export const getQuotations = () => getFromStorage('df_quotations', []);
-export const getOrders = () => getFromStorage('df_orders', []);
-export const getWarehouses = () => getFromStorage('df_warehouses', []);
-export const getInvoices = () => getFromStorage('df_invoices', []);
-export const getNotifications = () => getFromStorage('df_notifications', []);
-
-export const addAuditLog = (user, action, entity, description) => {
-  const logs = getAuditLogs();
-  const newLog = {
-    id: `al_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    user: user?.name || 'System',
-    role: user?.role || 'System',
-    action,
-    entity,
-    description
-  };
-  setToStorage('df_audit', [newLog, ...logs]);
-};
-
-// Basic CRUD for a generic entity (to simplify operations in services)
-export const saveEntity = (key, entity, isNew = false) => {
-  const data = getFromStorage(key, []);
-  let updated;
-  if (isNew) {
-    updated = [...data, { ...entity, id: `id_${Date.now()}` }];
-  } else {
-    updated = data.map(i => (i.id === entity.id ? entity : i));
-  }
-  setToStorage(key, updated);
-};
+export const getNotifications = () => [];

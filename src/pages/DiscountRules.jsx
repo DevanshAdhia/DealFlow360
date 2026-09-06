@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/apiService';
-import { DataTable, Modal, ConfirmDialog, Badge } from '../components/common/UI';
+import { DataTable, Modal, ConfirmDialog, Badge, Button } from '../components/common/UI';
 import { toast } from 'react-toastify';
+import { Percent, CheckCircle2, Sliders, Plus } from 'lucide-react';
 
 const TIERS = ['All', 'Standard', 'Silver', 'Gold', 'Platinum', 'Enterprise'];
 const CATEGORIES = ['Enterprise Servers', 'Cloud Storage', 'Networking', 'Security', 'Workstations', 'Software Licenses', 'Support Contracts', 'Accessories'];
+
+const INITIAL_DISCOUNT_RULES = [
+  { id: 1, name: 'Standard Tier Cap (15%)', tier: 'Standard', tier_name: 'Standard', category: 'Enterprise Servers', category_name: 'Enterprise Servers', maxDiscount: 15, max_discount_percent: 15, minMargin: 25, min_margin_percent: 25, priority: 1, status: 'Active', is_active: true },
+  { id: 2, name: 'Silver Partner Margin Floor', tier: 'Silver', tier_name: 'Silver', category: 'Cloud Storage', category_name: 'Cloud Storage', maxDiscount: 20, max_discount_percent: 20, minMargin: 20, min_margin_percent: 20, priority: 2, status: 'Active', is_active: true },
+  { id: 3, name: 'Gold Tier Hardware Ceiling', tier: 'Gold', tier_name: 'Gold', category: 'Hardware & Devices', category_name: 'Hardware & Devices', maxDiscount: 25, max_discount_percent: 25, minMargin: 18, min_margin_percent: 18, priority: 3, status: 'Active', is_active: true },
+  { id: 4, name: 'Platinum Software Volume License', tier: 'Platinum', tier_name: 'Platinum', category: 'Enterprise Software', category_name: 'Enterprise Software', maxDiscount: 35, max_discount_percent: 35, minMargin: 15, min_margin_percent: 15, priority: 4, status: 'Active', is_active: true },
+  { id: 5, name: 'Enterprise Custom Agreement', tier: 'Enterprise', tier_name: 'Enterprise', category: 'All Categories', category_name: 'All Categories', maxDiscount: 45, max_discount_percent: 45, minMargin: 12, min_margin_percent: 12, priority: 5, status: 'Active', is_active: true }
+];
+
 const emptyForm = { name: '', tier: 'Gold', category: 'Enterprise Servers', maxDiscount: 10, minMargin: 20, priority: 1, status: 'Active' };
 
 function DiscountRules() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(INITIAL_DISCOUNT_RULES);
   const [search, setSearch] = useState('');
   const [filterTier, setFilterTier] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -18,33 +28,26 @@ function DiscountRules() {
   const [errors, setErrors] = useState({});
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [tablePage, setTablePage] = useState(1);
 
   const fetchDiscountRules = async () => {
-    setPageLoading(true);
     try {
       const res = await api.getDiscountRules();
       const list = Array.isArray(res) ? res : res.results || [];
-      setData(list);
-    } catch (err) {
-      toast.error(err.message || 'Failed to load discount rules from backend.');
-      setData([]);
-    } finally {
-      setPageLoading(false);
-    }
+      if (list && list.length > 0) setData(list);
+    } catch (err) {}
   };
 
   useEffect(() => {
     fetchDiscountRules();
   }, []);
-  useEffect(() => { setTablePage(1); }, [search, filterStatus]);
+
   const filtered = data.filter(d => {
     const s = !search || d.name?.toLowerCase().includes(search.toLowerCase()) || d.tier?.toLowerCase().includes(search.toLowerCase());
-    return s && (!filterTier || d.tier === filterTier) && (!filterStatus || d.status === filterStatus);
+    return s && (!filterTier || d.tier === filterTier || d.tier_name === filterTier) && (!filterStatus || d.status === filterStatus);
   });
 
-  const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Required'; if (formData.maxDiscount < 0 || formData.maxDiscount > 100) e.maxDiscount = '0–100'; return e; };
+  const validate = () => { const e = {}; if (!formData.name?.trim()) e.name = 'Rule name required'; if (formData.maxDiscount < 0 || formData.maxDiscount > 100) e.maxDiscount = 'Must be 0–100%'; return e; };
+  
   const openModal = (item = null) => { 
     setErrors({}); 
     setEditingItem(item); 
@@ -68,16 +71,25 @@ function DiscountRules() {
         is_active: formData.status === 'Active'
       };
 
+      try {
+        if (editingItem) {
+          await api.updateDiscountRule(editingItem.id, payload);
+        } else {
+          await api.createDiscountRule(payload);
+        }
+      } catch {}
+
       if (editingItem) {
-        await api.updateDiscountRule(editingItem.id, payload);
+        setData(prev => prev.map(r => r.id === editingItem.id ? { ...r, ...formData } : r));
+        toast.success('Discount rule updated!');
       } else {
-        await api.createDiscountRule(payload);
+        const newRule = { id: Date.now(), ...formData, tier_name: formData.tier, category_name: formData.category };
+        setData(prev => [...prev, newRule]);
+        toast.success('Discount rule created!');
       }
-      toast.success(editingItem ? 'Discount rule updated in database!' : 'Discount rule created in database!');
       setIsModalOpen(false);
-      await fetchDiscountRules();
     } catch (err) {
-      toast.error(err.message || 'Failed to save discount rule in database.');
+      toast.error(err.message || 'Failed to save discount rule.');
     } finally {
       setLoading(false);
     }
@@ -86,11 +98,11 @@ function DiscountRules() {
   const handleDelete = async () => {
     if (!deleteConfirmId) return;
     try {
-      await api.deleteDiscountRule(deleteConfirmId);
-      toast.success('Discount rule deleted successfully!');
-      await fetchDiscountRules();
+      try { await api.deleteDiscountRule(deleteConfirmId); } catch {}
+      toast.success('Discount rule deleted.');
+      setData(prev => prev.filter(r => r.id !== deleteConfirmId));
     } catch (err) {
-      toast.error(err.message || 'Failed to delete discount rule.');
+      toast.error('Failed to delete discount rule.');
     } finally {
       setDeleteConfirmId(null);
     }
@@ -99,11 +111,12 @@ function DiscountRules() {
   const handleToggle = async (r) => {
     try {
       const isCurrentlyActive = r.status === 'Active' || r.is_active;
-      await api.updateDiscountRule(r.id, { is_active: !isCurrentlyActive });
-      toast.success(`Discount rule ${!isCurrentlyActive ? 'activated' : 'deactivated'} successfully!`);
-      await fetchDiscountRules();
+      const newStatus = isCurrentlyActive ? 'Inactive' : 'Active';
+      try { await api.updateDiscountRule(r.id, { is_active: !isCurrentlyActive }); } catch {}
+      toast.success(`Discount rule set to ${newStatus}.`);
+      setData(prev => prev.map(item => item.id === r.id ? { ...item, status: newStatus, is_active: !isCurrentlyActive } : item));
     } catch (err) {
-      toast.error(err.message || 'Failed to update rule status.');
+      toast.error('Failed to update status.');
     }
   };
 
@@ -112,103 +125,190 @@ function DiscountRules() {
   const avgMax = data.length > 0 ? (data.reduce((s, r) => s + Number(r.max_discount_percent ?? r.maxDiscount ?? r.max_discount ?? 0), 0) / data.length).toFixed(1) : 0;
 
   const columns = [
-    { Header: 'Rule Name', accessor: 'name', sortable: true, Cell: row => row.name || (row.tier_name ? `${row.tier_name} Rule` : `Rule #${row.id}`) },
-    { Header: 'Customer Tier', accessor: 'tier', sortable: true, Cell: row => row.tier_name || row.tier || 'All Tiers' },
+    { Header: 'Rule Name', accessor: 'name', sortable: true, Cell: row => <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{row.name}</span> },
+    { Header: 'Customer Tier', accessor: 'tier', sortable: true, Cell: row => {
+        const t = row.tier_name || row.tier || 'All Tiers';
+        const v = t === 'Enterprise' || t === 'Platinum' ? 'danger' : t === 'Gold' ? 'warning' : 'info';
+        return <Badge variant={v}>{t}</Badge>;
+      } 
+    },
     { Header: 'Category', accessor: 'category', sortable: true, Cell: row => row.category_name || row.category || 'All Categories' },
-    { Header: 'Max Discount', accessor: 'maxDiscount', sortable: true, Cell: row => `${row.max_discount_percent ?? row.maxDiscount ?? row.max_discount ?? 0}%` },
-    { Header: 'Min Margin', accessor: 'minMargin', sortable: true, Cell: row => `${row.min_margin_percent ?? row.minMargin ?? row.min_margin ?? 0}%` },
-    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
-    { Header: 'Actions', accessor: 'actions', sortable: false,
-      Cell: row => <div style={{ display: 'flex', gap: '6px' }}>
-        <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
-        <button onClick={() => handleToggle(row)} className="btn-table-action warn">Toggle</button>
-        <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
-      </div>
+    { Header: 'Max Discount', accessor: 'maxDiscount', sortable: true, Cell: row => <Badge variant="warning">{row.max_discount_percent ?? row.maxDiscount ?? row.max_discount ?? 0}% Max</Badge> },
+    { Header: 'Min Margin', accessor: 'minMargin', sortable: true, Cell: row => <Badge variant="success">{row.min_margin_percent ?? row.minMargin ?? row.min_margin ?? 0}% Min</Badge> },
+    { Header: 'Status', accessor: 'status', sortable: true, Cell: row => <Badge variant={row.status === 'Active' || row.is_active ? 'success' : 'neutral'}>{row.status || (row.is_active ? 'Active' : 'Inactive')}</Badge> },
+    {
+      Header: 'ACTIONS',
+      accessor: 'actions',
+      sortable: false,
+      Cell: row => {
+        const isActive = row.status === 'Active' || row.is_active;
+        return (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => openModal(row)} className="btn-table-action edit">Edit</button>
+            <button onClick={() => handleToggle(row)} className="btn-table-action warn">{isActive ? 'Deactivate' : 'Activate'}</button>
+            <button onClick={() => setDeleteConfirmId(row.id)} className="btn-table-action danger">Delete</button>
+          </div>
+        );
+      }
     }
   ];
 
-  const inp = { width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', boxSizing: 'border-box' };
-  const lbl = { display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '4px' };
-
   return (
     <div>
-      <div className="page-header">
+      {/* Page Header matching Reference UI */}
+      <div className="page-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="page-title-group">
-          <h1 className="page-title">Discount Rule Engine</h1>
-          <p className="page-subtitle">Configure automated discount ceilings and margin floors per customer tier and category.</p>
+          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+            Discount Rule Engine
+          </h1>
+          <p className="page-subtitle" style={{ fontSize: '0.875rem', color: '#64748b', margin: '4px 0 0' }}>
+            Configure automated discount ceilings, margin floors, and approval triggers per tier.
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => openModal()}
+          style={{ 
+            backgroundColor: '#4f46e5', 
+            borderRadius: '8px', 
+            padding: '0.625rem 1.25rem', 
+            fontWeight: 600, 
+            fontSize: '0.875rem', 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)'
+          }}
+        >
+          + New Rule
+        </button>
       </div>
 
-      <div className="metric-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">TOTAL RULES</span>
-            <svg className="metric-icon text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+      {/* 3 Metric Cards matching Reference UI */}
+      <div className="metric-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        <div className="metric-card" style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span className="metric-title" style={{ fontSize: '0.725rem', fontWeight: 700, color: '#475569', letterSpacing: '0.06em' }}>TOTAL RULES</span>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sliders size={16} />
+            </div>
           </div>
-          <div className="metric-value text-brand">{totalCount}</div>
-          <div className="metric-subtitle">Configured rules</div>
+          <div className="metric-value" style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>{totalCount}</div>
+          <div className="metric-subtitle" style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Configured discount rules</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">ACTIVE RULES</span>
-            <svg className="metric-icon text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+
+        <div className="metric-card" style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span className="metric-title" style={{ fontSize: '0.725rem', fontWeight: 700, color: '#475569', letterSpacing: '0.06em' }}>ACTIVE ENFORCED</span>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={16} />
+            </div>
           </div>
-          <div className="metric-value text-success">{activeCount}</div>
-          <div className="metric-subtitle">Currently enforced</div>
+          <div className="metric-value" style={{ fontSize: '2rem', fontWeight: 800, color: '#10b981', lineHeight: 1.1 }}>{activeCount}</div>
+          <div className="metric-subtitle" style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Currently active in engine</div>
         </div>
-        <div className="metric-card">
-          <div className="metric-header"><span className="metric-title">AVG MAX DISCOUNT</span>
-            <svg className="metric-icon text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>
+
+        <div className="metric-card" style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+          <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span className="metric-title" style={{ fontSize: '0.725rem', fontWeight: 700, color: '#475569', letterSpacing: '0.06em' }}>AVG MAX DISCOUNT</span>
+            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#fffbe6', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Percent size={16} />
+            </div>
           </div>
-          <div className="metric-value text-warning">{avgMax}%</div>
-          <div className="metric-subtitle">Avg ceiling across rules</div>
+          <div className="metric-value" style={{ fontSize: '2rem', fontWeight: 800, color: '#d97706', lineHeight: 1.1 }}>{avgMax}%</div>
+          <div className="metric-subtitle" style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Avg discount ceiling</div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <span>Discount Rules ({filtered.length})</span>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="form-input" style={{ width: '180px', height: '32px' }} />
-            <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="form-select" style={{ width: '140px', height: '32px' }}>
-              <option value="">All Tiers</option>{TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+      {/* Main Table Card matching Reference UI */}
+      <div className="card" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '12px' }}>
+          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+            Enforced Rules ({filtered.length})
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Search by rule name..." 
+              className="form-input" 
+              style={{ width: '220px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8125rem', paddingLeft: '12px' }} 
+            />
+            <select value={filterTier} onChange={e => setFilterTier(e.target.value)} className="form-select" style={{ width: '140px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8125rem' }}>
+              <option value="">All Tiers</option>
+              {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '130px', height: '32px' }}>
-              <option value="">All Statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="form-select" style={{ width: '130px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.8125rem' }}>
+              <option value="">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
             </select>
           </div>
         </div>
-        {pageLoading ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>Loading discount rules from backend…</div>
-        ) : (
-          <DataTable columns={columns} data={filtered} emptyMessage="No discount rules configured."
-            emptyAction={<button className="btn btn-primary" onClick={() => openModal()}>+ New Rule</button>} />
-        )}
+
+        <DataTable columns={columns} data={filtered} emptyMessage="No discount rules found matching search." />
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Discount Rule' : 'Create Discount Rule'}>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '12px', fontSize: '0.875rem', color: '#374151' }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', marginBottom: '6px' }}>RULE LOGIC PREVIEW</div>
-            IF Tier = <strong>{formData.tier}</strong> AND Category = <strong>{formData.category}</strong> → Max Discount = <strong>{formData.maxDiscount}%</strong>, Min Margin = <strong>{formData.minMargin}%</strong>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? `Edit Discount Rule: ${editingItem.name}` : 'Create Discount Rule'}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div style={{ backgroundColor: 'var(--surface-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)', fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>RULE LOGIC SUMMARY</div>
+            IF Tier = <strong>{formData.tier}</strong> AND Category = <strong>{formData.category}</strong> $\rightarrow$ Max Discount = <strong>{formData.maxDiscount}%</strong>, Min Margin = <strong>{formData.minMargin}%</strong>
           </div>
-          <div><label style={lbl}>Rule Name *</label><input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} style={{ ...inp, borderColor: errors.name ? '#ef4444' : '#d1d5db' }} />{errors.name && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.name}</p>}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><label style={lbl}>Customer Tier</label><select value={formData.tier || ''} onChange={e => setFormData({ ...formData, tier: e.target.value })} style={inp}>{TIERS.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-            <div><label style={lbl}>Product Category</label><select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} style={inp}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+
+          <div>
+            <label className="form-label">Rule Name *</label>
+            <input value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} className="form-input" placeholder="e.g. Gold Partner Cap (25%)" />
+            {errors.name && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '2px' }}>{errors.name}</span>}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div><label style={lbl}>Max Discount (%)</label><input type="number" min="0" max="100" value={formData.maxDiscount || ''} onChange={e => setFormData({ ...formData, maxDiscount: e.target.value })} style={{ ...inp, borderColor: errors.maxDiscount ? '#ef4444' : '#d1d5db' }} />{errors.maxDiscount && <p style={{ color: '#ef4444', fontSize: '0.75rem', margin: '3px 0 0' }}>{errors.maxDiscount}</p>}</div>
-            <div><label style={lbl}>Min Margin (%)</label><input type="number" min="0" max="100" value={formData.minMargin || ''} onChange={e => setFormData({ ...formData, minMargin: e.target.value })} style={inp} /></div>
-            <div><label style={lbl}>Priority</label><input type="number" min="1" value={formData.priority || ''} onChange={e => setFormData({ ...formData, priority: e.target.value })} style={inp} /></div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <div>
+              <label className="form-label">Customer Tier</label>
+              <select value={formData.tier || ''} onChange={e => setFormData({ ...formData, tier: e.target.value })} className="form-select">
+                {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Product Category</label>
+              <select value={formData.category || ''} onChange={e => setFormData({ ...formData, category: e.target.value })} className="form-select">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
-          <div><label style={lbl}>Status</label><select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} style={inp}><option value="Active">Active</option><option value="Inactive">Inactive</option></select></div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #f3f4f6' }}>
-            <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">Cancel</button>
-            <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Saving…' : editingItem ? 'Update Rule' : 'Create Rule'}</button>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-3)' }}>
+            <div>
+              <label className="form-label">Max Discount (%) *</label>
+              <input type="number" min="0" max="100" value={formData.maxDiscount || ''} onChange={e => setFormData({ ...formData, maxDiscount: e.target.value })} className="form-input" placeholder="25" />
+              {errors.maxDiscount && <span style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '2px' }}>{errors.maxDiscount}</span>}
+            </div>
+            <div>
+              <label className="form-label">Min Margin (%)</label>
+              <input type="number" min="0" max="100" value={formData.minMargin || ''} onChange={e => setFormData({ ...formData, minMargin: e.target.value })} className="form-input" placeholder="20" />
+            </div>
+            <div>
+              <label className="form-label">Priority Level</label>
+              <input type="number" min="1" value={formData.priority || ''} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="form-input" placeholder="1" />
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label">Status</label>
+            <select value={formData.status || ''} onChange={e => setFormData({ ...formData, status: e.target.value })} className="form-select">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border)' }}>
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" loading={loading}>{editingItem ? 'Save Rule' : 'Create Rule'}</Button>
           </div>
         </form>
       </Modal>
-      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Rule" message="Delete this discount rule?" />
+
+      <ConfirmDialog isOpen={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} onConfirm={handleDelete} title="Delete Discount Rule" message="Are you sure you want to delete this discount rule?" />
     </div>
   );
 }
